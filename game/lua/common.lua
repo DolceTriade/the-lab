@@ -53,10 +53,12 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against h
         end
     end
 
+    Cvar.set('g_BPInitialBudgetHumans', '1000')
 
     local numBots = math.max(math.min(6, sgame.level.num_connected_players * 2), 14)
 
     Cmd.exec('bot fill ' .. numBots .. ' h')
+    Cmd.exec('bot fill 3 a')
     chat.GlobalCP('Starting Human PVE mode!')
 end)
 
@@ -72,9 +74,10 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against a
         end
     end
 
-
+    Cvar.set('g_BPInitialBudgetAliens', '1000')
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
     Cmd.exec('bot fill ' .. numBots .. ' a')
+    Cmd.exec('bot fill 3 h')
     chat.GlobalCP('Starting Alien PVE mode!')
 end)
 
