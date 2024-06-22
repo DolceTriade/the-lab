@@ -1,0 +1,43 @@
+selectClass
+{
+	selector
+	{
+		condition team == TEAM_ALIENS
+		{
+			spawnAs PCL_ALIEN_LEVEL0
+		}
+	}
+}
+
+selector
+{
+	// reset the suicide timer
+	decorator return( STATUS_FAILURE )
+	{
+		action resetMyTimer
+	}
+
+	behavior unstick
+
+	condition team == TEAM_ALIENS
+	{
+		selector
+		{
+			condition ( aliveTime > 1500 && healScore < 0.5 )
+			{
+				action evolve
+			}
+
+			sequence
+			{
+				condition alertedToEnemy
+				action fight
+			}
+
+			action rush
+			action roamInRadius( E_H_REACTOR, 500 )
+			action roamInRadius( E_H_SPAWN, 500 )
+			action roam
+		}
+	}
+}
