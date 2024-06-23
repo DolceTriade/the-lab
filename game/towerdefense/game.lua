@@ -5,6 +5,8 @@ WAVE_DEATHS = 0
 
 TARGET_KILLS = 100
 
+STARTED = false
+
 function Say(ent, txt)
     local num = -1
     if ent ~= nil then
@@ -48,6 +50,10 @@ function StartGame(ent, team)
     if team == 'alien' then
         return
     end
+    if STARTED then
+        return
+    end
+    STARTED = true
     SayCP(nil, 'Game starts now! You have 5 minutes to build!')
     Timer.add(5 * 60 * 1000, StartWave)
 end
