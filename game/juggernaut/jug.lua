@@ -258,7 +258,6 @@ function AddBots()
 end
 
 function init()
-    sgame.hooks.RegisterChatHook(ExecChatCommand)
     sgame.hooks.RegisterClientConnectHook(WelcomeClient)
     sgame.hooks.RegisterClientConnectHook(MaybeResetJug)
     sgame.hooks.RegisterTeamChangeHook(OnTeamChange)
