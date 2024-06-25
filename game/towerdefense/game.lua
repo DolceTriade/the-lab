@@ -1,4 +1,6 @@
 -- Globals
+str = require('lua/str.lua')
+
 MAX_WAVE = 5
 WAVE = 1
 WAVE_DEATHS = 0
@@ -56,16 +58,44 @@ function StartGame(ent, team)
     STARTED = true
     SayCP(nil, 'Game starts now! You have 5 minutes to build!')
     Timer.add(5 * 60 * 1000, StartWave)
+    Timer.add(4 * 60 * 1000, function() SayCP(nil, '60 seconds before 1st wave!') end)
+end
+
+function SetAvailableEquipment(equip)
+    local e = Cvar.get('g_disabledEquipment')
+    local tarr = str.split(e, ',')
+    local t = {}
+    for _, p in ipairs(tarr) do
+        print('tarr', p)
+        t[p] = false
+    end
+    for k,v in pairs(equip) do
+        if v then
+            t[k] = nil
+        else
+            t[k] = v
+        end
+    end
+
+    local val = ''
+    for k,v in pairs(t) do
+        if not v then
+            val = val .. k .. ','
+        end
+    end
+
+    val = val:sub(1,-2)
+    Cvar.set('g_disabledEquipment', val)
 end
 
 function EnableBuilding()
     Say(nil, '-- Building Allowed!')
-    Cvar.set('g_disabledEquipment', '')
+    SetAvailableEquipment({ckit=true})
 end
 
 function DisableBuilding()
     Say(nil, '-- Building Not Allowed!')
-    Cvar.set('g_disabledEquipment', 'ckit')
+    SetAvailableEquipment({ckit=false})
     for i=0,sgame.level.max_clients do
         ent = sgame.entity[i]
         if ent and ent.client and ent.client.weapon == 'ckit' then
@@ -148,26 +178,30 @@ function PlayerSpawn(ent)
     end
 end
 
-function NextWave()
-    if MAX_WAVE == WAVE then
-        Cmd.exec('humanWin')
-        return
-    end
-
+function DeleteAlienBots()
     local cmd = ''
-    for i=0,64 do
+    for i=0,sgame.level.max_clients do
         local ent = sgame.entity[i]
         if ent and ent.bot and ent.team == 'alien' then
             cmd = cmd .. 'bot del ' .. i .. '\n'
         end
     end
     Cmd.exec(cmd)
+end
+
+function NextWave()
+    DeleteAlienBots()
+    if MAX_WAVE == WAVE then
+        Cmd.exec('humanWin')
+        return
+    end
 
     WAVE = WAVE + 1
     WAVE_DEATHS = 0
     EnableBuilding()
     SayCP(nil, 'Wave ' .. WAVE .. ' starts in 60s!')
     Timer.add(60 * 1000, StartWave)
+    Timer.add(50 * 1000, function() SayCP(nil, 'Wave ' .. WAVE .. ' starts in 10s!') end)
 end
 
 function StartWave()
@@ -189,7 +223,7 @@ function init()
     LockTeam('a')
     Cvar.set('g_instantBuilding', '1')
     Cvar.set('g_BPInitialBudgetHumans', '9999')
-    Cvar.set('g_disabledEquipment', 'jetpack,firebomb')
+    SetAvailableEquipment({jetpack=false, firebomb=false})
     Cvar.set('g_disabledBuildables', 'reactor,telenode')
     Cvar.set('g_evolveAroundHumans', '-1')
     print('Loaded lua...')
