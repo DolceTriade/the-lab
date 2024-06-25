@@ -249,7 +249,7 @@ function SetupBuildables()
 end
 
 function AddBots()
-    local numBots = math.max(math.min(6, sgame.level.num_connected_players * 2), 14)
+    local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
     local cmd = ''
     for i=0,numBots do
         cmd = cmd .. 'bot add * h 5;'
