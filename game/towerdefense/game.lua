@@ -209,7 +209,7 @@ function StartWave()
     ForceBotEvo('level' .. WAVE)
     local cmd = ''
     for i=0,16 do
-        cmd = cmd .. 'bot add * a 1 towerdefense\n'
+        cmd = cmd .. 'bot add * a 5 towerdefense\n'
     end
     Cmd.exec(cmd)
     sgame.level.aliens.momentum = 300

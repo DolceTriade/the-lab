@@ -34,7 +34,6 @@ selector
 				action fight
 			}
 
-			action rush
 			action roamInRadius( E_H_REACTOR, 500 )
 			action roamInRadius( E_H_SPAWN, 500 )
 			action roam
