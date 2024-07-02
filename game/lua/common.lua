@@ -220,7 +220,6 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
                 txt = txt .. ', '
             end
             local val = Cvar.get(v)
-            print('be', v, val)
             val = cvars:parseBool(val)
             txt = txt .. k .. ' = ' .. boolMap[val]
         end
