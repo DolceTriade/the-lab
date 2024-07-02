@@ -16,7 +16,6 @@ local boolCvars = {
 cvars.CLEANUP = {}
 
 function cleanup__gc()
-    print("GC'ing!!")
     local cmd = ''
     for k, _ in pairs(cvars.CLEANUP) do
         cmd = cmd .. 'reset ' .. k .. '\n'
