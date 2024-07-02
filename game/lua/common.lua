@@ -1,6 +1,7 @@
 -- unlockteams, lockhumans, lockaliens, firebomboff, kick, defaultrot, fillbots_humans, mute, delaysd, extend, draw, kickbots, map_restart, nextmap, botskill, layout, unmute, map, poll, fillbots_aliens, fillbots, maxminers, alienfunds, minerbp, humanpve, spectate, alienpve, firebombon
 
 local chat = require('lua/chat.lua')
+local cvars = require('lua/cvars.lua')
 
 
 sgame.RegisterVote('botskill', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
@@ -53,7 +54,7 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against h
         end
     end
 
-    Cvar.set('g_BPInitialBudgetHumans', '1000')
+    cvars:set('g_BPInitialBudgetHumans', '1000')
 
     local numBots = math.max(math.min(6, sgame.level.num_connected_players * 2), 14)
 
@@ -74,7 +75,7 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against a
         end
     end
 
-    Cvar.set('g_BPInitialBudgetAliens', '1000')
+    cvars:set('g_BPInitialBudgetAliens', '1000')
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
     Cmd.exec('bot fill ' .. numBots .. ' a')
     Cmd.exec('bot fill 3 h')
@@ -176,7 +177,7 @@ _BOTEQUIP_H_CVARS = {
     shotgun = 'g_bot_shotgun',
     lgun = 'g_bot_lasgun',
     mdriver = 'g_bot_mdriver',
-    chaingun = 'g_bot_chaingun',
+    chaingun = 'g_bot_chain',
     prifle = 'g_bot_prifle',
     flamer = 'g_bot_flamer',
     lcannon = 'g_bot_lcannon',
@@ -184,7 +185,6 @@ _BOTEQUIP_H_CVARS = {
     firebomb = 'g_bot_firebomb',
     grenade = 'g_bot_grenade',
     radar = 'g_bot_radar',
-    repair = 'g_bot_repair',
     build = 'g_bot_buildHumans',
 }
 
@@ -196,6 +196,11 @@ _BOTEQUIP_A_CVARS = {
     level3upg = 'g_bot_level3upg',
     level4 = 'g_bot_level4',
     build = 'g_bot_buildAliens',
+}
+
+local boolMap = {
+    [true] = "ON",
+    [false] = "OFF",
 }
 
 sgame.RegisterClientCommand('botequip', function(ent, args)
@@ -214,7 +219,10 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
             else
                 txt = txt .. ', '
             end
-            txt = txt .. k .. ' = ' .. Cvar.get(v)
+            local val = Cvar.get(v)
+            print('be', v, val)
+            val = cvars:parseBool(val)
+            txt = txt .. k .. ' = ' .. boolMap[val]
         end
         chat.Say(ent, txt)
     end
@@ -231,14 +239,17 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
             chat.Say(ent, 'Invalid equipment ' .. v)
             return
         end
-        cmd = cmd .. 'toggle ' .. cvar .. ';'
+        cmd = cmd .. 'toggle ' .. cvar .. '\n'
+        cvars:addCleanup(cvar)
         local val = Cvar.get(cvar)
+        val = cvars:parseBool(val)
         txt = txt .. v
-        if val == '0' then
-            txt = txt .. ' ^2Allowed^*\n'
-        else
+        if val then
             txt = txt .. ' ^1Denied^*\n'
+        else
+            txt = txt .. ' ^2Allowed^*\n'
         end
     end
     Cmd.exec(cmd)
+    chat.Say(ent, txt)
 end)
