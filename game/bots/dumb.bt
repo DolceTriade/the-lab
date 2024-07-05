@@ -1,0 +1,14 @@
+selector
+{
+    decorator timer( 3000 )
+    {
+        condition ( random > 0.50 )
+        {
+            sequence
+            {
+                action gesture
+                action say( "FITE ME IRL", 0 )
+            }
+        }
+    }
+}
