@@ -1,3 +1,5 @@
+local cvars = require('lua/cvars.lua')
+
 -- Globals
 SPAWN_PTS = {
     plat23 = {2301, 2315, 148},
@@ -87,7 +89,7 @@ function SetJuggernaut(ent)
     if not KILLS[ent.number] then
         KILLS[ent.number] = 0
     end
-    CP(nil, ent.client.name .. ' is now the juggernaut!')
+    CP(nil, ent.client.name .. '^* is now the juggernaut!')
 end
 
 function OnTeamChange(ent, team)
@@ -140,12 +142,14 @@ function MaybeResetJug(ent, connect)
 end
 
 function JugDie(ent, inflictor, attacker, mod)
+    Putteam(juggernaut, 'h')
     if inflictor ~= nil and inflictor.client ~= nil then
         oldOrigin = CopyTable(ent.origin)
-        Putteam(juggernaut, 'h')
         SetJuggernaut(inflictor)
     else
         oldOrigin = nil
+        juggernaut = nil
+        ResetJug()
     end
     teleported = false
 end
@@ -264,14 +268,14 @@ function init()
     sgame.hooks.RegisterPlayerSpawnHook(OnPlayerSpawn)
     sgame.hooks.RegisterGameEndHook(GameEnd)
     SetupBuildables()
-    Cvar.set('g_bot_attackStruct', '0')
-    Cvar.set('g_disabledClasses', 'builder,builderupg')
-    Cvar.set('g_disabledEquipment', 'ckit')
-    Cvar.set('g_momentumBaseMod', '1.0')
-    Cvar.set('g_momentumHalfLife', '0')
-    Cvar.set('g_momentumKillMod', '2')
-    Cvar.set('g_evolveAroundHumans', '-1')
-    Cvar.set('g_bot_defaultFill', '0')
+    cvars:set('g_bot_attackStruct', '0')
+    cvars:set('g_disabledClasses', 'builder,builderupg')
+    cvars:set('g_disabledEquipment', 'ckit')
+    cvars:set('g_momentumBaseMod', '1.0')
+    cvars:set('g_momentumHalfLife', '0')
+    cvars:set('g_momentumKillMod', '2')
+    cvars:set('g_evolveAroundHumans', '-1')
+    cvars:set('g_bot_defaultFill', '0')
 
     sgame.RegisterClientCommand('help', PrintHelp)
     sgame.RegisterClientCommand('kills', PrintKills)
