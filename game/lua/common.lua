@@ -4,6 +4,23 @@ local chat = require('lua/chat.lua')
 local cvars = require('lua/cvars.lua')
 
 
+sgame.RegisterVote('instabuild', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    cvars:addCleanup('g_instantBuilding')
+    local instabuild = cvars:parseBool(Cvar.get('g_instantBuilding'))
+    local status = instabuild and '^1OFF^*' or '^2ON^*'
+
+    return true, 'toggle g_instantBuilding', 'Toggle instant building: ' .. status
+end)
+
+sgame.RegisterVote('devmap', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    local layout = ''
+    if #args > 0 then
+        layout = args[1]
+    end
+    local map = Cvar.get('mapname')
+    return true, 'devmap ' .. map, 'Enable devmap on current map'
+end)
+
 sgame.RegisterVote('botskill', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
     local skill = tonumber(args[1])
     if not skill or skill < 1 or skill > 9 then
