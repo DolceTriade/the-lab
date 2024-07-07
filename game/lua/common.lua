@@ -55,7 +55,8 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against h
     end
 
     cvars:set('g_BPInitialBudgetHumans', '1000')
-
+    -- After 15 min, lock down human building
+    Timer.add(15 * 60 * 1000, function() cvars:set('g_BPInitialBudgetHumans', tostring(sgame.level.humans.spent_budget)) end)
     local numBots = math.max(math.min(6, sgame.level.num_connected_players * 2), 14)
 
     Cmd.exec('bot fill ' .. numBots .. ' h')
@@ -76,6 +77,8 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against a
     end
 
     cvars:set('g_BPInitialBudgetAliens', '1000')
+    -- After 15 min, lock down alien building
+    Timer.add(15 * 60 * 1000, function() cvars:set('g_BPInitialBudgetAliens', tostring(sgame.level.aliens.spent_budget)) end)
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
     Cmd.exec('bot fill ' .. numBots .. ' a')
     Cmd.exec('bot fill 3 h')
