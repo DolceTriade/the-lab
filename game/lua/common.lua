@@ -8,7 +8,7 @@ sgame.RegisterVote('instabuild', { type = 'V_PUBLIC', target = 'T_NONE' }, funct
     cvars:addCleanup('g_instantBuilding')
     local instabuild = cvars:parseBool(Cvar.get('g_instantBuilding'))
     local status = instabuild and '^1OFF^*' or '^2ON^*'
-
+    cvars.addCleanup('g_instantBuilding')
     return true, 'toggle g_instantBuilding', 'Toggle instant building: ' .. status
 end)
 
@@ -32,7 +32,7 @@ sgame.RegisterVote('botskill', { type = 'V_PUBLIC', target = 'T_OTHER' }, functi
         return false
     end
 
-    return true, 'set g_bot_defaultSkill ' .. skill .. ';bot skill ' .. skill, 'Set bot skill level to: ' .. skill
+    return true, 'setg g_bot_defaultSkill ' .. skill .. ';bot skill ' .. skill, 'Set bot skill level to: ' .. skill
 end)
 
 sgame.RegisterVote('maxminers', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
@@ -46,7 +46,7 @@ sgame.RegisterVote('maxminers', { type = 'V_PUBLIC', target = 'T_OTHER' }, funct
         return false
     end
 
-    return true, 'set g_maxMiners ' .. max, 'Set max number of miners per team to: ' .. max
+    return true, 'setg g_maxMiners ' .. max, 'Set max number of miners per team to: ' .. max
 end)
 
 sgame.RegisterVote('minerbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
@@ -60,7 +60,7 @@ sgame.RegisterVote('minerbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, functio
         return false
     end
 
-    return true, 'set g_BPBudgetPerMiner ' .. bp, 'Set BP per miner to: ' .. bp
+    return true, 'setg g_BPBudgetPerMiner ' .. bp, 'Set BP per miner to: ' .. bp
 end)
 
 sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against human bots', function(args)
@@ -169,7 +169,7 @@ sgame.RegisterVote('alienfunds', { type = 'V_PUBLIC', target = 'T_OTHER' }, func
         return false
     end
 
-    return true, 'set g_freeFundPeriod 0;setalienfreefunds ' .. evos .. ' ' .. interval,
+    return true, 'setg g_freeFundPeriod 0;setalienfreefunds ' .. evos .. ' ' .. interval,
         'Give aliens ' .. evos .. ' evos every ' .. interval .. 'ms'
 end)
 
@@ -271,4 +271,9 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
     end
     Cmd.exec(cmd)
     chat.Say(ent, txt)
+end)
+
+sgame.RegisterServerCommand('setg', 'Set a cvar for the duration of the game. After which it will be restored to the previous value.', function(args)
+
+    cvars:set(args[1], tostring(args[2]))
 end)
