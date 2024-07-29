@@ -8,7 +8,6 @@ sgame.RegisterVote('instabuild', { type = 'V_PUBLIC', target = 'T_NONE' }, funct
     cvars:addCleanup('g_instantBuilding')
     local instabuild = cvars:parseBool(Cvar.get('g_instantBuilding'))
     local status = instabuild and '^1OFF^*' or '^2ON^*'
-    cvars.addCleanup('g_instantBuilding')
     return true, 'toggle g_instantBuilding', 'Toggle instant building: ' .. status
 end)
 
