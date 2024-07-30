@@ -5,8 +5,8 @@ local cvars = require('lua/cvars.lua')
 
 
 sgame.RegisterVote('instabuild', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    cvars:addCleanup('g_instantBuilding')
-    local instabuild = cvars:parseBool(Cvar.get('g_instantBuilding'))
+    cvars.addCleanup('g_instantBuilding')
+    local instabuild = cvars.parseBool(Cvar.get('g_instantBuilding'))
     local status = instabuild and '^1OFF^*' or '^2ON^*'
     return true, 'toggle g_instantBuilding', 'Toggle instant building: ' .. status
 end)
@@ -70,9 +70,9 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against h
         end
     end
 
-    cvars:set('g_BPInitialBudgetHumans', '1000')
+    cvars.set('g_BPInitialBudgetHumans', '1000')
     -- After 15 min, lock down human building
-    Timer.add(15 * 60 * 1000, function() cvars:set('g_BPInitialBudgetHumans', tostring(sgame.level.humans.spent_budget)) end)
+    Timer.add(15 * 60 * 1000, function() cvars.set('g_BPInitialBudgetHumans', tostring(sgame.level.humans.spent_budget)) end)
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
 
     Cmd.exec('bot fill ' .. numBots .. ' h')
@@ -92,9 +92,9 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against a
         end
     end
 
-    cvars:set('g_BPInitialBudgetAliens', '1000')
+    cvars.set('g_BPInitialBudgetAliens', '1000')
     -- After 15 min, lock down alien building
-    Timer.add(15 * 60 * 1000, function() cvars:set('g_BPInitialBudgetAliens', tostring(sgame.level.aliens.spent_budget)) end)
+    Timer.add(15 * 60 * 1000, function() cvars.set('g_BPInitialBudgetAliens', tostring(sgame.level.aliens.spent_budget)) end)
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
     Cmd.exec('bot fill ' .. numBots .. ' a')
     Cmd.exec('bot fill 3 h')
@@ -239,7 +239,7 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
                 txt = txt .. ', '
             end
             local val = Cvar.get(v)
-            val = cvars:parseBool(val)
+            val = cvars.parseBool(val)
             txt = txt .. k .. ' = ' .. boolMap[val]
         end
         chat.Say(ent, txt)
@@ -258,9 +258,9 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
             return
         end
         cmd = cmd .. 'toggle ' .. cvar .. '\n'
-        cvars:addCleanup(cvar)
+        cvars.addCleanup(cvar)
         local val = Cvar.get(cvar)
-        val = cvars:parseBool(val)
+        val = cvars.parseBool(val)
         txt = txt .. v
         if val then
             txt = txt .. ' ^1Denied^*\n'
@@ -273,6 +273,8 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
 end)
 
 sgame.RegisterServerCommand('setg', 'Set a cvar for the duration of the game. After which it will be restored to the previous value.', function(args)
-
-    cvars:set(args[1], tostring(args[2]))
+    if #args ~= 2 then
+        print('Expected 2 args')
+    end
+    cvars.set(args[1], tostring(args[2]))
 end)

@@ -88,7 +88,7 @@ function SetAvailableEquipment(equip)
     end
 
     val = val:sub(1,-2)
-    cvars:set('g_disabledEquipment', val)
+    cvars.set('g_disabledEquipment', val)
 end
 
 function EnableBuilding()
@@ -118,10 +118,10 @@ function ForceBotEvo(level)
         local enable = level == k and '1' or '0'
         print(k, v, level, enable)
         local cvar = 'g_bot_' .. k
-        cvars:set(cvar, enable)
+        cvars.set(cvar, enable)
         CVAR_RESET[cvar] = true
         if v then
-            cvars:set(cvar..'upg', enable)
+            cvars.set(cvar..'upg', enable)
             CVAR_RESET[cvar .. 'upg'] = true
         end
     end
@@ -226,11 +226,11 @@ function init()
     sgame.hooks.RegisterTeamChangeHook(StartGame)
     SetupAlienBase()
     LockTeam('a')
-    cvars:set('g_instantBuilding', '1')
-    cvars:set('g_BPInitialBudgetHumans', '9999')
+    cvars.set('g_instantBuilding', '1')
+    cvars.set('g_BPInitialBudgetHumans', '9999')
     SetAvailableEquipment({jetpack=false, firebomb=false})
-    cvars:set('g_disabledBuildables', 'reactor,telenode')
-    cvars:set('g_evolveAroundHumans', '-1')
+    cvars.set('g_disabledBuildables', 'reactor,telenode')
+    cvars.set('g_evolveAroundHumans', '-1')
     print('Loaded lua...')
 end
 
