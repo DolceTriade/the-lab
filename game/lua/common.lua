@@ -105,6 +105,7 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against h
 
     Cmd.exec('bot fill ' .. numBots .. ' h')
     Cmd.exec('bot fill 3 a')
+    Cmd.exec('lock h')
     chat.GlobalCP('Starting Human PVE mode!')
 end)
 
@@ -126,6 +127,7 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against a
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
     Cmd.exec('bot fill ' .. numBots .. ' a')
     Cmd.exec('bot fill 3 h')
+    Cmd.exec('lock a')
     chat.GlobalCP('Starting Alien PVE mode!')
 end)
 
