@@ -62,6 +62,34 @@ sgame.RegisterVote('minerbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, functio
     return true, 'setg g_BPBudgetPerMiner ' .. bp, 'Set BP per miner to: ' .. bp
 end)
 
+sgame.RegisterVote('alienbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
+    local bp = tonumber(args[1])
+    if not bp or bp <= 0 then
+        local num = -2
+        if not ent then
+            num = ent.number
+        end
+        chat.Say(ent, 'Must pass a positive number for alienbp')
+        return false
+    end
+
+    return true, 'setg g_BPInitialBudgetAliens ' .. bp .. '; updateVampireBP', 'Set Alien BP to: ' .. bp
+end)
+
+sgame.RegisterVote('humanbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
+    local bp = tonumber(args[1])
+    if not bp or bp <= 0 then
+        local num = -2
+        if not ent then
+            num = ent.number
+        end
+        chat.Say(ent, 'Must pass a positive number for humanbp')
+        return false
+    end
+
+    return true, 'setg g_BPInitialBudgetHumans ' .. bp .. '; updateVampireBP', 'Set Human BP to: ' .. bp
+end)
+
 sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against human bots', function(args)
     for i = 0, sgame.level.max_clients do
         local ent = sgame.entity[i]
