@@ -90,7 +90,7 @@ sgame.RegisterVote('humanbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, functio
     return true, 'setg g_BPInitialBudgetHumans ' .. bp .. '; updateVampireBP', 'Set Human BP to: ' .. bp
 end)
 
-sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against human bots', function(args)
+sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against human bots', function(args)
     for i = 0, sgame.level.max_clients do
         local ent = sgame.entity[i]
         if ent and ent.client and ent.team == 'human' then
@@ -109,11 +109,11 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against h
     chat.GlobalCP('Starting Human PVE mode!')
 end)
 
-sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'humanpve', 'Start Human PVE mode (Aliens vs Human bots)!'
+sgame.RegisterVote('alienpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    return true, 'map_restart; alienpve', 'Start Human PVE mode (Aliens vs Human bots)!'
 end)
 
-sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against alien bots', function(args)
+sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against alien bots', function(args)
     for i = 0, sgame.level.max_clients do
         local ent = sgame.entity[i]
         if ent and ent.client and ent.team == 'alien' then
@@ -131,8 +131,8 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against a
     chat.GlobalCP('Starting Alien PVE mode!')
 end)
 
-sgame.RegisterVote('alienpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'alienpve', 'Start Alien PVE mode (Humans vs Alien bots)!'
+sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    return true, 'map_restart; humanpve', 'Start Alien PVE mode (Humans vs Alien bots)!'
 end)
 
 sgame.RegisterVote('juggernaut', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
