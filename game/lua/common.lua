@@ -110,7 +110,7 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against h
 end)
 
 sgame.RegisterVote('alienpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'map_restart; alienpve', 'Start Human PVE mode (Aliens vs Human bots)!'
+    return true, 'map_restart; delay 10f alienpve', 'Start Human PVE mode (Aliens vs Human bots)!'
 end)
 
 sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against alien bots', function(args)
@@ -125,14 +125,14 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against a
     -- After 15 min, lock down alien building
     Timer.add(15 * 60 * 1000, function() cvars.set('g_BPInitialBudgetAliens', tostring(sgame.level.aliens.spent_budget)) end)
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
+    Cmd.exec('lock a;bot del all')
     Cmd.exec('bot fill ' .. numBots .. ' a')
     Cmd.exec('bot fill 3 h')
-    Cmd.exec('lock a')
     chat.GlobalCP('Starting Alien PVE mode!')
 end)
 
 sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'map_restart; humanpve', 'Start Alien PVE mode (Humans vs Alien bots)!'
+    return true, 'map_restart; delay 10f humanpve', 'Start Alien PVE mode (Humans vs Alien bots)!'
 end)
 
 sgame.RegisterVote('juggernaut', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
