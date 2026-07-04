@@ -5,5 +5,5 @@ if game and game ~= '' then
     Cvar.set('lua_gamemode', '')
     Cmd.exec('lua -f ' .. game)
 else
-    Cmd.exec('bot fill 4')
+    Cmd.exec('bot fill 5')
 end

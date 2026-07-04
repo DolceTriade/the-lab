@@ -48,20 +48,6 @@ sgame.RegisterVote('maxminers', { type = 'V_PUBLIC', target = 'T_OTHER' }, funct
     return true, 'setg g_maxMiners ' .. max, 'Set max number of miners per team to: ' .. max
 end)
 
-sgame.RegisterVote('minerbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
-    local bp = tonumber(args[1])
-    if not bp or bp <= 0 then
-        local num = -2
-        if not ent then
-            num = ent.number
-        end
-        chat.Say(ent, 'Must pass a positive number for minerbp')
-        return false
-    end
-
-    return true, 'setg g_BPBudgetPerMiner ' .. bp, 'Set BP per miner to: ' .. bp
-end)
-
 sgame.RegisterVote('alienbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
     local bp = tonumber(args[1])
     if not bp or bp <= 0 then
@@ -73,7 +59,7 @@ sgame.RegisterVote('alienbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, functio
         return false
     end
 
-    return true, 'setg g_BPInitialBudgetAliens ' .. bp .. '; updateVampireBP', 'Set Alien BP to: ' .. bp
+    return true, 'setg g_BPInitialBudgetAliens ' .. bp, 'Set Alien BP to: ' .. bp
 end)
 
 sgame.RegisterVote('humanbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
@@ -87,7 +73,7 @@ sgame.RegisterVote('humanbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, functio
         return false
     end
 
-    return true, 'setg g_BPInitialBudgetHumans ' .. bp .. '; updateVampireBP', 'Set Human BP to: ' .. bp
+    return true, 'setg g_BPInitialBudgetHumans ' .. bp, 'Set Human BP to: ' .. bp
 end)
 
 sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against human bots', function(args)
@@ -101,7 +87,7 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against h
     cvars.set('g_BPInitialBudgetHumans', '1000')
     -- After 15 min, lock down human building
     Timer.add(15 * 60 * 1000, function() cvars.set('g_BPInitialBudgetHumans', tostring(sgame.level.humans.spent_budget)) end)
-    local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
+    local numBots = 9
 
     Cmd.exec('bot fill ' .. numBots .. ' h')
     Cmd.exec('bot fill 3 a')
@@ -110,7 +96,7 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against h
 end)
 
 sgame.RegisterVote('alienpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'map_restart; delay 10f alienpve', 'Start Human PVE mode (Aliens vs Human bots)!'
+    return true, 'map_restart; delay 10f alienpve', 'Start Alien PVE mode (Aliens vs Human bots)!'
 end)
 
 sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against alien bots', function(args)
@@ -124,7 +110,7 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against a
     cvars.set('g_BPInitialBudgetAliens', '1000')
     -- After 15 min, lock down alien building
     Timer.add(15 * 60 * 1000, function() cvars.set('g_BPInitialBudgetAliens', tostring(sgame.level.aliens.spent_budget)) end)
-    local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
+    local numBots = 9
     Cmd.exec('lock a;bot del all')
     Cmd.exec('bot fill ' .. numBots .. ' a')
     Cmd.exec('bot fill 3 h')
@@ -133,73 +119,6 @@ end)
 
 sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
     return true, 'map_restart; delay 10f humanpve', 'Start Alien PVE mode (Humans vs Alien bots)!'
-end)
-
-sgame.RegisterVote('juggernaut', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'set lua_gamemode juggernaut/jug.lua;map_restart', 'Start the juggernaut gamemode!'
-end)
-
-sgame.RegisterVote('towerdefense', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'set lua_gamemode towerdefense/game.lua;map_restart', 'Start the Tower Defense gamemode!'
-end)
-
-
-_ALIEN_FREE_FUNDS = {
-    evos = 0,
-    interval = 0,
-    enabled = false,
-}
-
-local function _addalienmoney()
-    for i = 0, 64 do
-        local ent = sgame.entity[i]
-        if ent and ent.client and ent.team == 'alien' then
-            ent.client.evos = math.min(math.max(ent.client.evos + _ALIEN_FREE_FUNDS.evos, 0), 20)
-        end
-    end
-
-    if sgame.level.intermission or not _ALIEN_FREE_FUNDS.enabled then
-        return
-    end
-
-    Timer.add(_ALIEN_FREE_FUNDS.interval, _addalienmoney)
-end
-
-sgame.RegisterServerCommand('setalienfreefunds', 'Set how many funds aliens get at which interval', function(args)
-    local usage = function()
-        print('setalienfreefunds <time in s> [# of evos] ')
-    end
-    if #args < 1 then
-        usage()
-        return
-    end
-    local interval = tonumber(args[1])
-    local evos = tonumber(args[2]) or 1
-    if not interval then
-        print('interval must be a number.')
-        usage()
-        return
-    end
-    _ALIEN_FREE_FUNDS.evos = evos
-    _ALIEN_FREE_FUNDS.interval = interval * 1000
-    if not _ALIEN_FREE_FUNDS.enabled and interval > 0 then
-        Timer.add(_ALIEN_FREE_FUNDS.interval, _addalienmoney)
-        _ALIEN_FREE_FUNDS.enabled = true
-    elseif interval <= 0 then
-        _ALIEN_FREE_FUNDS.enabled = false
-    end
-end)
-
-sgame.RegisterVote('alienfunds', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
-    local interval = tonumber(args[1])
-    local evos = tonumber(args[2]) or 1
-    if not interval then
-        chat.Say(ent, 'Must pass a number for for interval!\ncallvote alienfunds <interval in s> [# of evos]')
-        return false
-    end
-
-    return true, 'setg g_freeFundPeriod 0;setalienfreefunds ' .. evos .. ' ' .. interval,
-        'Give aliens ' .. evos .. ' evos every ' .. interval .. 'ms'
 end)
 
 local function pairsByKeys(t, f)
