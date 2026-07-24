@@ -84,15 +84,15 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against h
         end
     end
 
-    cvars.set('g_BPInitialBudgetHumans', '1000')
-    -- After 15 min, lock down human building
-    Timer.add(15 * 60 * 1000, function() cvars.set('g_BPInitialBudgetHumans', tostring(sgame.level.humans.spent_budget)) end)
+    cvars.set('g_BPInitialBudgetHumans', '2000')
     local numBots = 9
 
-    Cmd.exec('bot fill ' .. numBots .. ' h')
     Cmd.exec('bot fill 3 a')
+    cvars.set('g_bot_defaultBehavior', 'pve.lua')
+    cvars.set('g_bot_buildNumTelenodes', '1000')
+    Cmd.exec('bot fill ' .. numBots .. ' h')
     Cmd.exec('lock h')
-    chat.GlobalCP('Starting Human PVE mode!')
+    chat.GlobalCP('Starting Alien PVE mode!')
 end)
 
 sgame.RegisterVote('alienpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
@@ -107,14 +107,14 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against a
         end
     end
 
-    cvars.set('g_BPInitialBudgetAliens', '1000')
-    -- After 15 min, lock down alien building
-    Timer.add(15 * 60 * 1000, function() cvars.set('g_BPInitialBudgetAliens', tostring(sgame.level.aliens.spent_budget)) end)
+    cvars.set('g_BPInitialBudgetAliens', '2000')
     local numBots = 9
     Cmd.exec('lock a;bot del all')
-    Cmd.exec('bot fill ' .. numBots .. ' a')
     Cmd.exec('bot fill 3 h')
-    chat.GlobalCP('Starting Alien PVE mode!')
+    cvars.set('g_bot_defaultBehavior', 'pve.lua')
+    cvars.set('g_bot_buildNumEggs', '1000')
+    Cmd.exec('bot fill ' .. numBots .. ' a')
+    chat.GlobalCP('Starting Human PVE mode!')
 end)
 
 sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
