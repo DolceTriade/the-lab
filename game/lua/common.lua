@@ -89,7 +89,6 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against h
 
     Cmd.exec('bot fill 3 a')
     cvars.set('g_bot_defaultBehavior', 'pve.lua')
-    cvars.set('g_bot_buildNumTelenodes', '1000')
     Cmd.exec('bot fill ' .. numBots .. ' h')
     Cmd.exec('lock h')
     chat.GlobalCP('Starting Alien PVE mode!')
@@ -112,7 +111,6 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against a
     Cmd.exec('lock a;bot del all')
     Cmd.exec('bot fill 3 h')
     cvars.set('g_bot_defaultBehavior', 'pve.lua')
-    cvars.set('g_bot_buildNumEggs', '1000')
     Cmd.exec('bot fill ' .. numBots .. ' a')
     chat.GlobalCP('Starting Human PVE mode!')
 end)
