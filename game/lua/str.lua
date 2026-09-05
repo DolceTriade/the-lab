@@ -24,4 +24,8 @@ function str.join(input, sep)
     end
 end
 
+function str.ucfirst(s)
+    return (s:gsub("^%l", string.upper))
+end
+
 return str

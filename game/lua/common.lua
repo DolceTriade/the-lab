@@ -1,7 +1,8 @@
--- unlockteams, lockhumans, lockaliens, firebomboff, kick, defaultrot, fillbots_humans, mute, delaysd, extend, draw, kickbots, map_restart, nextmap, botskill, layout, unmute, map, poll, fillbots_aliens, fillbots, maxminers, alienfunds, minerbp, humanpve, spectate, alienpve, firebombon
+-- unlockteams, lockhumans, lockaliens, firebomboff, kick, defaultrot, fillbots_humans, mute, delaysd, extend, draw, kickbots, map_restart, nextmap, botskill, layout, unmute, map, poll, fillbots_aliens, fillbots, maxminers, alienfunds, minerbp, humanpve, humanraid, spectate, alienpve, firebombon
 
 local chat = require('lua/chat.lua')
 local cvars = require('lua/cvars.lua')
+local raid = require('lua/raid.lua')
 
 
 sgame.RegisterVote('instabuild', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
@@ -88,7 +89,7 @@ sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against h
     local numBots = 9
 
     Cmd.exec('bot fill 3 a')
-    cvars.set('g_bot_defaultBehaviorHuman', 'pve.lua')
+    cvars.set('g_bot_defaultBehaviorHuman', 'pve')
     cvars.set('g_bot_buildCooldown', '4000')
     Cmd.exec('bot fill ' .. numBots .. ' h')
     Cmd.exec('lock h')
@@ -111,7 +112,7 @@ sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against a
     local numBots = 9
     Cmd.exec('lock a;bot del all')
     Cmd.exec('bot fill 3 h')
-    cvars.set('g_bot_defaultBehaviorAlien', 'pve.lua')
+    cvars.set('g_bot_defaultBehaviorAlien', 'pve')
     cvars.set('g_bot_buildCooldown', '4000')
     Cmd.exec('bot fill ' .. numBots .. ' a')
     chat.GlobalCP('Starting Human PVE mode!')
@@ -119,6 +120,22 @@ end)
 
 sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
     return true, 'map_restart; delay 10f humanpve', 'Start Alien PVE mode (Humans vs Alien bots)!'
+end)
+
+sgame.RegisterServerCommand('humanraid', 'Start a raid game with humans against an alien boss team', function(args)
+    raid.start('human')
+end)
+
+sgame.RegisterVote('humanraid', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    return true, 'map_restart; delay 10f humanraid', 'Start Human Raid mode (Humans vs Alien boss team)!'
+end)
+
+sgame.RegisterServerCommand('alienraid', 'Start a raid game with aliens against an Human boss team', function(args)
+    raid.start('alien')
+end)
+
+sgame.RegisterVote('alienraid', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    return true, 'map_restart; delay 10f alienraid', 'Start Alien Raid mode (Aliens vs Human boss team)!'
 end)
 
 local function pairsByKeys(t, f)
