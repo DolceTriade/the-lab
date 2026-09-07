@@ -98,7 +98,7 @@ end
 local function bosses_wf()
     local team = STATE['pveTeam']
 
-    while true do
+    for _ = 1, 3 do
         wf.wait_ms(BOSS_INTERVAL_MS)
         chat.GlobalCP(str.ucfirst(team) .. ' boss incoming!')
         boss.add(random_boss(team))
