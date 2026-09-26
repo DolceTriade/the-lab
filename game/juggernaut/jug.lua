@@ -1,273 +1,262 @@
 local cvars = require('lua/cvars.lua')
 
--- Globals
-SPAWN_PTS = {
-    plat23 = {2301, 2315, 148},
-    antares = {-839, -1526, 15},
+local Juggernaut = {}
+Juggernaut.__index = Juggernaut
+
+local SPAWN_PTS = {
+    plat23 = { 2301, 2315, 148 },
+    antares = { -839, -1526, 15 },
 }
-DEFAULT_SPAWN_PT = SPAWN_PTS[Cvar.get('mapname')] or {0, 0 , 0}
 
-juggernaut = nil
-oldOrigin = nil
-gameOver = false
-teleported = false
-KILLS_REQ = 10
-KILLS = {}
-
-function CopyTable(src)
-    local n = {}
-    for k, v in ipairs(src) do
-        n[k] = v
-    end
-    return n
+local function sameEnt(a, b)
+    return a ~= nil and b ~= nil and a.number == b.number
 end
 
-function Say(ent, txt)
-    local num = -1
-    if ent then
-        num = ent.number
+function Juggernaut.new(options)
+    options = options or {}
+    return setmetatable({
+        juggernaut = nil,
+        oldOrigin = nil,
+        gameOver = false,
+        teleported = false,
+        killsReq = 10,
+        kills = {},
+        defaultSpawnPoint = SPAWN_PTS[Cvar.get('mapname')] or { 0, 0, 0 },
+        difficulty = options.difficulty,
+    }, Juggernaut)
+end
+
+function Juggernaut:copyTable(src)
+    local copy = {}
+    for k, v in ipairs(src) do
+        copy[k] = v
     end
+    return copy
+end
+
+function Juggernaut:say(ent, txt)
+    local num = ent and ent.number or -1
     sgame.SendServerCommand(num, 'print ' .. '"' .. txt .. '"')
 end
 
-function CP(ent, txt)
-    local num = -1
-    if ent then
-        num = ent.number
-    end
+function Juggernaut:cp(ent, txt)
+    local num = ent and ent.number or -1
     sgame.SendServerCommand(num, 'cp ' .. '"' .. txt .. '"')
 end
 
-function SayCP(ent, txt)
-    Say(ent, txt)
-    CP(ent, txt)
+function Juggernaut:sayCP(ent, txt)
+    self:say(ent, txt)
+    self:cp(ent, txt)
 end
 
-function Putteam(ent, team)
+function Juggernaut:putTeam(ent, team)
     if not ent or not ent.client then
         return
     end
-    Timer.add(1, function ()
+    Timer.add(1, function()
         ent.client:forceteam(team)
         if ent.bot then
-            local skill = ent.bot.skill
-            ent.bot.skill = skill
+            ent.bot.skill = ent.bot.skill
         end
     end)
 end
 
-function PrintHelp(ent, args)
-    Say(ent, string.format([=[Welcome to the Juggernaut mod!
+function Juggernaut:printHelp(ent)
+    self:say(ent, string.format([=[Welcome to the Juggernaut mod!
 Kill the Juggernaut (the alien) to become the alien.
 First alien with %d kills wins the game!
-List of commands: /help /kills']=], KILLS_REQ))
+List of commands: /help /kills']=], self.killsReq))
 end
 
-function PrintKills(ent, args)
-    local out = "Kills Required: " .. KILLS_REQ .. "\n"
-    out = out .. "Kills:\n"
-    for k,v in pairs(KILLS) do
-        out = out .. sgame.entity[k].client.name .. "^* = " .. v .. "\n"
+function Juggernaut:printKills(ent)
+    local out = 'Kills Required: ' .. self.killsReq .. '\nKills:\n'
+    for k, value in pairs(self.kills) do
+        out = out .. sgame.entity[k].client.name .. '^* = ' .. value .. '\n'
     end
-    Say(ent, out)
+    self:say(ent, out)
 end
 
-function SameEnt(a, b)
-    if a == nil or b == nil then
-        return false
+function Juggernaut:welcomeClient(ent, connect)
+    self:cp(ent, 'Welcome to the Juggernaut mod! Type /help for more info.')
+end
+
+function Juggernaut:setJuggernaut(ent)
+    self.juggernaut = ent
+    self:putTeam(ent, 'a')
+    if not self.kills[ent.number] then
+        self.kills[ent.number] = 0
     end
-    return a.number == b.number
+    self:cp(nil, ent.client.name .. '^* is now the juggernaut!')
 end
 
-function WelcomeClient(ent, connect)
-    CP(ent, 'Welcome to the Juggernaut mod! Type /help for more info.')
-end
-
-function SetJuggernaut(ent)
-    juggernaut = ent
-    Putteam(ent, 'a')
-    if not KILLS[ent.number] then
-        KILLS[ent.number] = 0
+function Juggernaut:onTeamChange(ent, team)
+    if self.juggernaut == nil and team == 'human' then
+        self:setJuggernaut(ent)
+        return
     end
-    CP(nil, ent.client.name .. '^* is now the juggernaut!')
-end
 
-function OnTeamChange(ent, team)
-    -- Set the first juggernaut.
-    if juggernaut == nil then
-        if team == 'human' then
-            SetJuggernaut(ent)
-            return
-        end
-    end
-    -- If the current juggernaut leaves, reset...
-    if SameEnt(juggernaut, ent) then
+    if sameEnt(self.juggernaut, ent) then
         if team ~= 'alien' then
-            juggernaut = nil
-            ResetJug()
+            self.juggernaut = nil
+            self:resetJug()
         end
         ent.client:cmd('class level0')
         return
     end
-    -- Don't let people join aliens unless they are the juggernaut.
+
     if team == 'alien' then
-        Putteam(ent, 'h')
+        self:putTeam(ent, 'h')
     end
 end
 
-function ResetJug()
+function Juggernaut:resetJug()
     local start = math.random(0, sgame.level.max_clients)
     local i = start
     while true do
-        local e = sgame.entity[i]
-        if e and e.client and e.team == "human" then
-            SetJuggernaut(e)
+        local ent = sgame.entity[i]
+        if ent and ent.client and ent.team == 'human' then
+            self:setJuggernaut(ent)
             return
         end
-        i = i + 1
-        i = i % sgame.level.max_clients
+        i = (i + 1) % sgame.level.max_clients
         if i == start then
             break
         end
     end
-    SayCP(nil, "Unable to set juggeranut!")
+    self:sayCP(nil, 'Unable to set juggernaut!')
 end
 
-function MaybeResetJug(ent, connect)
-    -- TODO: Make this smarter by picking a player with the largest kill count or something...
-    if SameEnt(ent, juggernaut) and not connect then
-        juggernaut = nil
-        ResetJug()
+function Juggernaut:maybeResetJug(ent, connect)
+    if sameEnt(ent, self.juggernaut) and not connect then
+        self.juggernaut = nil
+        self:resetJug()
     end
 end
 
-function JugDie(ent, inflictor, attacker, mod)
-    Putteam(juggernaut, 'h')
+function Juggernaut:jugDie(ent, inflictor)
+    self:putTeam(self.juggernaut, 'h')
     if inflictor ~= nil and inflictor.client ~= nil then
-        oldOrigin = CopyTable(ent.origin)
-        SetJuggernaut(inflictor)
+        self.oldOrigin = self:copyTable(ent.origin)
+        self:setJuggernaut(inflictor)
     else
-        oldOrigin = nil
-        juggernaut = nil
-        ResetJug()
+        self.oldOrigin = nil
+        self.juggernaut = nil
+        self:resetJug()
     end
-    teleported = false
+    self.teleported = false
 end
 
-function RestoreHealth()
-    local health = juggernaut.client.health
-    local max_health = Unv.classes[juggernaut.client.class].health
-    health = health + max_health * 0.5
-    if health > max_health then
-        health = max_health
-    end
-    juggernaut.client.health = health
+function Juggernaut:restoreHealth()
+    local health = self.juggernaut.client.health
+    local maxHealth = Unv.classes[self.juggernaut.client.class].health
+    self.juggernaut.client.health = math.min(health + maxHealth * 0.5, maxHealth)
 end
 
-function KillCount(ent, inflictor, attacker, mod)
-    if SameEnt(inflictor, juggernaut) then
-        KILLS[juggernaut.number] = KILLS[juggernaut.number] + 1
-        CP(nil, 'Juggernaut has ' .. KILLS[juggernaut.number] .. ' kills!')
-        RestoreHealth()
-        if KILLS[juggernaut.number] == KILLS_REQ then
-            gameOver = true
-        end
+function Juggernaut:killCount(ent, inflictor)
+    if not sameEnt(inflictor, self.juggernaut) then
+        return
+    end
+    self.kills[self.juggernaut.number] = self.kills[self.juggernaut.number] + 1
+    self:cp(nil, 'Juggernaut has ' .. self.kills[self.juggernaut.number] .. ' kills!')
+    self:restoreHealth()
+    if self.kills[self.juggernaut.number] == self.killsReq then
+        self.gameOver = true
     end
 end
 
-function OnPlayerSpawn(ent)
+function Juggernaut:onPlayerSpawn(ent)
     if ent.team == 'spectator' then
         return
     end
-    if SameEnt(ent, juggernaut) then
-        -- If they are a spec but on aliens, then they just entered the spawn menu. So force them to spawn.
+    if sameEnt(ent, self.juggernaut) then
         if ent.client.class == 'spectator' and ent.team == 'alien' then
             ent.client:cmd('class level0')
             return
         end
-        ent.die = JugDie
-        local teleLocation = oldOrigin and oldOrigin or DEFAULT_SPAWN_PT
-        if not teleported and teleLocation then
+        ent.die = function(...) self:jugDie(...) end
+        local teleLocation = self.oldOrigin or self.defaultSpawnPoint
+        if not self.teleported and teleLocation then
             ent.client:teleport(teleLocation)
-            oldOrigin = nil
-            teleported = true
+            self.oldOrigin = nil
+            self.teleported = true
         end
         return
     end
-    ent.die = KillCount
+    ent.die = function(...) self:killCount(...) end
 end
 
-function GameEnd()
-    if gameOver then
-        return 'aliens'
-    end
-    return false
+function Juggernaut:gameEnd()
+    return self.gameOver and 'aliens' or false
 end
 
-function SetupBuildables()
+function Juggernaut:setupBuildables()
     local eggs = {}
     local nodes = {}
     for _, ent in pairs(sgame.entity) do
         if ent.team == 'alien' and ent.buildable ~= nil then
             ent.buildable.god = true
             if ent.buildable.name == 'eggpod' then
-                eggs[#eggs+1] = ent
+                eggs[#eggs + 1] = ent
             elseif ent.buildable.name ~= 'overmind' and ent.buildable.name ~= 'booster' then
                 ent.buildable:decon()
             end
         elseif ent.team == 'human' and ent.buildable ~= nil then
             ent.buildable.god = true
             if ent.buildable.name == 'telenode' then
-                nodes[#nodes+1] = ent
+                nodes[#nodes + 1] = ent
             elseif ent.buildable.name ~= 'reactor' and ent.buildable.name ~= 'arm' and ent.buildable.name ~= 'medistat' then
                 ent.buildable:decon()
             end
         end
     end
-    local num_spawn = 16
-    local eggs_per_egg = math.floor(num_spawn / #eggs)
-    print('Using ' .. eggs_per_egg .. ' spawns per spawn')
-    if eggs_per_egg < 1 then
+
+    local numSpawn = 16
+    if #eggs == 0 or #nodes == 0 then
+        print('Juggernaut map is missing spawn buildables')
+        return
+    end
+    local eggsPerEgg = math.floor(numSpawn / #eggs)
+    print('Using ' .. eggsPerEgg .. ' spawns per spawn')
+    if eggsPerEgg < 1 then
         return
     end
     for _, egg in ipairs(eggs) do
-        for i=0,eggs_per_egg do
-            local new_egg = sgame.SpawnBuildable('eggpod', egg.origin, egg.angles, egg.origin2, true)
-            if not new_egg then
-                print("error creating egg")
+        for _ = 0, eggsPerEgg do
+            local newEgg = sgame.SpawnBuildable('eggpod', egg.origin, egg.angles, egg.origin2, true)
+            if newEgg then
+                newEgg.buildable.god = true
             end
-            new_egg.buildable.god = true
-        end
-    end
-    local nodes_per_node = math.floor(num_spawn / #nodes)
-    for _, node in ipairs(nodes) do
-        for i=0,nodes_per_node do
-            local new_node = sgame.SpawnBuildable('telenode', node.origin, node.angles, node.origin2, true)
-            if not new_node then
-                print("error creating egg")
-            end
-            new_node.buildable.god = true
         end
     end
 
+    local nodesPerNode = math.floor(numSpawn / #nodes)
+    for _, node in ipairs(nodes) do
+        for _ = 0, nodesPerNode do
+            local newNode = sgame.SpawnBuildable('telenode', node.origin, node.angles, node.origin2, true)
+            if newNode then
+                newNode.buildable.god = true
+            end
+        end
+    end
 end
 
-function AddBots()
+function Juggernaut:addBots()
     local numBots = math.min(math.max(6, sgame.level.num_connected_players * 2), 14)
     local cmd = ''
-    for i=0,numBots do
+    for _ = 0, numBots do
         cmd = cmd .. 'bot add * h 5;'
     end
     Cmd.exec(cmd)
 end
 
-function init()
-    sgame.hooks.RegisterClientConnectHook(WelcomeClient)
-    sgame.hooks.RegisterClientConnectHook(MaybeResetJug)
-    sgame.hooks.RegisterTeamChangeHook(OnTeamChange)
-    sgame.hooks.RegisterPlayerSpawnHook(OnPlayerSpawn)
-    sgame.hooks.RegisterGameEndHook(GameEnd)
-    SetupBuildables()
+function Juggernaut:start()
+    sgame.hooks.RegisterClientConnectHook(function(...) self:welcomeClient(...) end)
+    sgame.hooks.RegisterClientConnectHook(function(...) self:maybeResetJug(...) end)
+    sgame.hooks.RegisterTeamChangeHook(function(...) self:onTeamChange(...) end)
+    sgame.hooks.RegisterPlayerSpawnHook(function(...) self:onPlayerSpawn(...) end)
+    sgame.hooks.RegisterGameEndHook(function(...) return self:gameEnd(...) end)
+
+    self:setupBuildables()
     cvars.set('g_bot_attackStruct', '0')
     cvars.set('g_disabledClasses', 'builder,builderupg')
     cvars.set('g_disabledEquipment', 'ckit')
@@ -277,30 +266,28 @@ function init()
     cvars.set('g_evolveAroundHumans', '-1')
     cvars.set('g_bot_defaultFill', '0')
 
-    sgame.RegisterClientCommand('help', PrintHelp)
-    sgame.RegisterClientCommand('kills', PrintKills)
-
+    sgame.RegisterClientCommand('help', function(ent) self:printHelp(ent) end)
+    sgame.RegisterClientCommand('kills', function(ent) self:printKills(ent) end)
     sgame.RegisterServerCommand('jug_req_kills', 'Set the number of kills required to win', function(args)
         local kills = tonumber(args[1])
         if not kills or kills < 1 then
             print('Invalid number. Kills must be greater than 0')
+            return
         end
-        KILLS_REQ = kills
+        self.killsReq = kills
     end)
-
     sgame.RegisterVote('jugkills', { type = 'V_PUBLIC', target = 'T_OTHER' }, function(ent, team, args)
         local kills = tonumber(args[1])
         if not kills or kills < 1 then
-            Say(ent, 'Invalid number. Kills must be greater than 0')
+            self:say(ent, 'Invalid number. Kills must be greater than 0')
+            return false
         end
-
-        return true, 'jug_req_kills ' .. kills, 'Set of juggernaut kills to win: ' .. kills
+        return true, 'jug_req_kills ' .. kills, 'Set Juggernaut kills to win: ' .. kills
     end)
 
     Cmd.exec('lock a')
-    AddBots()
+    self:addBots()
     print('Loaded lua...')
-
 end
 
-Timer.add(1, init)
+return Juggernaut

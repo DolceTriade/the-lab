@@ -36,10 +36,6 @@ function M.SetAvailableEquipment(equip)
     _setCSVCvar('g_disabledEquipment', equip)
 end
 
-function M.SetAvailableEquipment(equip)
-    _setCSVCvar('g_disabledEquipment', equip)
-end
-
 function M.AllPlayers()
     local idx = -1
     local max = level.num_connected_clients

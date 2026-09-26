@@ -2,7 +2,35 @@
 
 local chat = require('lua/chat.lua')
 local cvars = require('lua/cvars.lua')
-local raid = require('lua/raid.lua')
+local difficulty = require('lua/difficulty.lua')
+local mode = require('lua/mode.lua')
+
+local function startMode(path, team)
+    mode.SetMode(path, team)
+    Cmd.exec('map_restart')
+end
+
+local function modeVote(command, description, args)
+    if #args > 1 then
+        return false
+    end
+
+    local selected
+    if args[1] then
+        selected = difficulty.ParseDifficulty(string.lower(args[1]))
+        if not selected or not difficulty.SetDifficulty(selected) then
+            return false
+        end
+    else
+        selected = difficulty.GuessDifficulty()
+    end
+    if not selected then
+        return false
+    end
+    local selectedName = difficulty.DifficultyString(selected)
+    return true, command,
+        description .. ' (difficulty: ' .. selectedName .. ')'
+end
 
 
 sgame.RegisterVote('instabuild', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
@@ -78,64 +106,51 @@ sgame.RegisterVote('humanbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, functio
 end)
 
 sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against human bots', function(args)
-    for i = 0, sgame.level.max_clients do
-        local ent = sgame.entity[i]
-        if ent and ent.client and ent.team == 'human' then
-            ent.client:forceteam('aliens')
-        end
-    end
-
-    cvars.set('g_BPInitialBudgetHumans', '2000')
-    local numBots = 9
-
-    Cmd.exec('bot fill 3 a')
-    cvars.set('g_bot_defaultBehaviorHuman', 'pve')
-    cvars.set('g_bot_buildCooldown', '4000')
-    Cmd.exec('bot fill ' .. numBots .. ' h')
-    Cmd.exec('lock h')
-    chat.GlobalCP('Starting Alien PVE mode!')
+    startMode('lua/pve.lua', 'alien')
 end)
 
 sgame.RegisterVote('alienpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'map_restart; delay 10f alienpve', 'Start Alien PVE mode (Aliens vs Human bots)!'
+    return modeVote('alienpve', 'Start Alien PVE mode (Aliens vs Human bots)!', args)
 end)
 
 sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against alien bots', function(args)
-    for i = 0, sgame.level.max_clients do
-        local ent = sgame.entity[i]
-        if ent and ent.client and ent.team == 'alien' then
-            ent.client:forceteam('humans')
-        end
-    end
-
-    cvars.set('g_BPInitialBudgetAliens', '2000')
-    local numBots = 9
-    Cmd.exec('lock a;bot del all')
-    Cmd.exec('bot fill 3 h')
-    cvars.set('g_bot_defaultBehaviorAlien', 'pve')
-    cvars.set('g_bot_buildCooldown', '4000')
-    Cmd.exec('bot fill ' .. numBots .. ' a')
-    chat.GlobalCP('Starting Human PVE mode!')
+    startMode('lua/pve.lua', 'human')
 end)
 
 sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'map_restart; delay 10f humanpve', 'Start Alien PVE mode (Humans vs Alien bots)!'
+    return modeVote('humanpve', 'Start Human PVE mode (Humans vs Alien bots)!', args)
 end)
 
 sgame.RegisterServerCommand('humanraid', 'Start a raid game with humans against an alien boss team', function(args)
-    raid.start('human')
+    startMode('lua/raid.lua', 'human')
 end)
 
 sgame.RegisterVote('humanraid', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'map_restart; delay 10f humanraid', 'Start Human Raid mode (Humans vs Alien boss team)!'
+    return modeVote('humanraid', 'Start Human Raid mode (Humans vs Alien boss team)!', args)
 end)
 
 sgame.RegisterServerCommand('alienraid', 'Start a raid game with aliens against an Human boss team', function(args)
-    raid.start('alien')
+    startMode('lua/raid.lua', 'alien')
 end)
 
 sgame.RegisterVote('alienraid', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'map_restart; delay 10f alienraid', 'Start Alien Raid mode (Aliens vs Human boss team)!'
+    return modeVote('alienraid', 'Start Alien Raid mode (Aliens vs Human boss team)!', args)
+end)
+
+sgame.RegisterServerCommand('juggernaut', 'Start the Juggernaut game mode', function(args)
+    startMode('juggernaut/jug.lua')
+end)
+
+sgame.RegisterVote('juggernaut', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    return true, 'juggernaut', 'Start the Juggernaut game mode!'
+end)
+
+sgame.RegisterServerCommand('towerdefense', 'Start the Tower Defense game mode', function(args)
+    startMode('towerdefense/game.lua')
+end)
+
+sgame.RegisterVote('towerdefense', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
+    return true, 'towerdefense', 'Start the Tower Defense game mode!'
 end)
 
 local function pairsByKeys(t, f)

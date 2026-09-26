@@ -1,191 +1,173 @@
--- Globals
 local str = require('lua/str.lua')
 local cvars = require('lua/cvars.lua')
 
-MAX_WAVE = 5
-WAVE = 1
-WAVE_DEATHS = 0
+local TowerDefense = {}
+TowerDefense.__index = TowerDefense
 
-TARGET_KILLS = 100
+local MAX_WAVE = 5
+local TARGET_KILLS = 100
 
-STARTED = false
+function TowerDefense.new(options)
+    options = options or {}
+    return setmetatable({
+        wave = 1,
+        waveDeaths = 0,
+        started = false,
+        cvarReset = {},
+        difficulty = options.difficulty,
+    }, TowerDefense)
+end
 
-CVAR_RESET = {}
-
-function Say(ent, txt)
-    local num = -1
-    if ent ~= nil then
-        num = ent.number
-    end
+function TowerDefense:say(ent, txt)
+    local num = ent and ent.number or -1
     sgame.SendServerCommand(num, 'print ' .. '"^2Tower Defense^*: ' .. txt .. '"')
 end
 
-function CP(ent, txt)
-    local num = -1
-    if ent ~= nil then
-        num = ent.number
-    end
+function TowerDefense:cp(ent, txt)
+    local num = ent and ent.number or -1
     sgame.SendServerCommand(num, 'cp ' .. '"' .. txt .. '"')
 end
 
-function SayCP(ent, txt)
-    CP(ent, txt)
-    Say(ent, txt)
+function TowerDefense:sayCP(ent, txt)
+    self:cp(ent, txt)
+    self:say(ent, txt)
 end
 
-function LockTeam(team)
+function TowerDefense:lockTeam(team)
     Cmd.exec('lock ' .. team)
 end
 
-function SameEnt(a, b)
-    if a == nil or b == nil then
-        return false
+function TowerDefense:welcomeClient(ent, connect)
+    if connect then
+        self:cp(ent, 'Welcome to Tower Defense!')
     end
-    return a.number == b.number
 end
 
-function WelcomeClient(ent, connect)
-    if not connect then
+function TowerDefense:startGame(ent, team)
+    if team == 'alien' or self.started then
         return
     end
-    CP(ent, 'Welcome to Tower Defense!')
+    self.started = true
+    self:sayCP(nil, 'Game starts now! You have 5 minutes to build!')
+    Timer.add(5 * 60 * 1000, function() self:startWave() end)
+    Timer.add(4 * 60 * 1000, function() self:sayCP(nil, '60 seconds before 1st wave!') end)
 end
 
-function StartGame(ent, team)
-    if team == 'alien' then
-        return
+function TowerDefense:setAvailableEquipment(equip)
+    local current = Cvar.get('g_disabledEquipment')
+    local disabled = {}
+    for _, item in ipairs(str.split(current, ',')) do
+        disabled[item] = false
     end
-    if STARTED then
-        return
-    end
-    STARTED = true
-    SayCP(nil, 'Game starts now! You have 5 minutes to build!')
-    Timer.add(5 * 60 * 1000, StartWave)
-    Timer.add(4 * 60 * 1000, function() SayCP(nil, '60 seconds before 1st wave!') end)
-end
-
-function SetAvailableEquipment(equip)
-    local e = Cvar.get('g_disabledEquipment')
-    local tarr = str.split(e, ',')
-    local t = {}
-    for _, p in ipairs(tarr) do
-        print('tarr', p)
-        t[p] = false
-    end
-    for k,v in pairs(equip) do
-        if v then
-            t[k] = nil
+    for item, enabled in pairs(equip) do
+        if enabled then
+            disabled[item] = nil
         else
-            t[k] = v
+            disabled[item] = enabled
         end
     end
 
-    local val = ''
-    for k,v in pairs(t) do
-        if not v then
-            val = val .. k .. ','
+    local value = ''
+    for item, enabled in pairs(disabled) do
+        if not enabled then
+            value = value .. item .. ','
         end
     end
-
-    val = val:sub(1,-2)
-    cvars.set('g_disabledEquipment', val)
+    cvars.set('g_disabledEquipment', value:sub(1, -2))
 end
 
-function EnableBuilding()
-    Say(nil, '-- Building Allowed!')
-    SetAvailableEquipment({ckit=true})
+function TowerDefense:enableBuilding()
+    self:say(nil, '-- Building Allowed!')
+    self:setAvailableEquipment({ ckit = true })
 end
 
-function DisableBuilding()
-    Say(nil, '-- Building Not Allowed!')
-    SetAvailableEquipment({ckit=false})
-    for i=0,sgame.level.max_clients do
-        ent = sgame.entity[i]
+function TowerDefense:disableBuilding()
+    self:say(nil, '-- Building Not Allowed!')
+    self:setAvailableEquipment({ ckit = false })
+    for i = 0, sgame.level.max_clients do
+        local ent = sgame.entity[i]
         if ent and ent.client and ent.client.weapon == 'ckit' then
             ent.client:forceweapon('rifle')
         end
     end
 end
 
-function ForceBotEvo(level)
+function TowerDefense:forceBotEvo(level)
     local classes = {
         level1 = false,
         level2 = true,
         level3 = true,
         level4 = false,
     }
-    for k, v in pairs(classes) do
-        local enable = level == k and '1' or '0'
-        print(k, v, level, enable)
-        local cvar = 'g_bot_' .. k
-        cvars.set(cvar, enable)
-        CVAR_RESET[cvar] = true
-        if v then
-            cvars.set(cvar..'upg', enable)
-            CVAR_RESET[cvar .. 'upg'] = true
+    for class, enabledForClass in pairs(classes) do
+        local enabled = level == class and '1' or '0'
+        local cvar = 'g_bot_' .. class
+        cvars.set(cvar, enabled)
+        self.cvarReset[cvar] = true
+        if enabledForClass then
+            cvars.set(cvar .. 'upg', enabled)
+            self.cvarReset[cvar .. 'upg'] = true
         end
     end
 end
 
-function SetupAlienBase()
+function TowerDefense:setupAlienBase()
     local eggs = {}
     for _, ent in pairs(sgame.entity) do
         if ent.team == 'alien' and ent.buildable ~= nil then
             ent.buildable.god = true
             if ent.buildable.name == 'eggpod' then
-                eggs[#eggs+1] = ent
+                eggs[#eggs + 1] = ent
             end
         end
     end
-    local num_eggs = 16
-    local eggs_per_egg = math.floor(num_eggs / #eggs)
-    print('Using ' .. eggs_per_egg .. ' eggs per egg')
-    if eggs_per_egg < 1 then
+
+    local numEggs = 16
+    if #eggs == 0 then
+        print('Tower Defense map has no alien eggpods')
+        return
+    end
+    local eggsPerEgg = math.floor(numEggs / #eggs)
+    print('Using ' .. eggsPerEgg .. ' eggs per egg')
+    if eggsPerEgg < 1 then
         return
     end
     for _, egg in ipairs(eggs) do
-        for i=0,eggs_per_egg do
-            local new_egg = sgame.SpawnBuildable('eggpod', egg.origin, egg.angles, egg.origin2, true)
-            if not new_egg then
-                print("error creating egg")
+        for _ = 0, eggsPerEgg do
+            local newEgg = sgame.SpawnBuildable('eggpod', egg.origin, egg.angles, egg.origin2, true)
+            if newEgg then
+                newEgg.buildable.god = true
             end
-            new_egg.buildable.god = true
         end
     end
 end
 
-function CountDeaths(self, inflictor, attacker, mod)
-    if self == nil then
+function TowerDefense:countDeaths(ent)
+    if not ent or ent.team ~= 'alien' then
         return
     end
-
-    if self.team == 'alien' then
-        WAVE_DEATHS = WAVE_DEATHS + 1
+    self.waveDeaths = self.waveDeaths + 1
+    if self.waveDeaths % 5 == 0 then
+        self:say(nil, 'Kills: ' .. self.waveDeaths .. ' / ' .. TARGET_KILLS)
     end
-
-    if WAVE_DEATHS % 5 == 0 then
-        Say(nil, 'Kills: ' .. WAVE_DEATHS .. ' / ' .. TARGET_KILLS)
-    end
-
-    if WAVE_DEATHS == TARGET_KILLS then
-        NextWave()
+    if self.waveDeaths == TARGET_KILLS then
+        self:nextWave()
     end
 end
 
-function PlayerSpawn(ent)
+function TowerDefense:playerSpawn(ent)
     if not ent then
         return
     end
-
     if ent.team == 'alien' then
         ent.client.evos = 20
-        ent.die = CountDeaths
+        ent.die = function(...) self:countDeaths(...) end
     end
 end
 
-function DeleteAlienBots()
+function TowerDefense:deleteAlienBots()
     local cmd = ''
-    for i=0,sgame.level.max_clients do
+    for i = 0, sgame.level.max_clients do
         local ent = sgame.entity[i]
         if ent and ent.bot and ent.team == 'alien' then
             cmd = cmd .. 'bot del ' .. i .. '\n'
@@ -194,44 +176,45 @@ function DeleteAlienBots()
     Cmd.exec(cmd)
 end
 
-function NextWave()
-    DeleteAlienBots()
-    if MAX_WAVE == WAVE then
+function TowerDefense:nextWave()
+    self:deleteAlienBots()
+    if MAX_WAVE == self.wave then
         Cmd.exec('humanWin')
         return
     end
 
-    WAVE = WAVE + 1
-    WAVE_DEATHS = 0
-    EnableBuilding()
-    SayCP(nil, 'Wave ' .. WAVE .. ' starts in 60s!')
-    Timer.add(60 * 1000, StartWave)
-    Timer.add(50 * 1000, function() SayCP(nil, 'Wave ' .. WAVE .. ' starts in 10s!') end)
+    self.wave = self.wave + 1
+    self.waveDeaths = 0
+    self:enableBuilding()
+    self:sayCP(nil, 'Wave ' .. self.wave .. ' starts in 60s!')
+    Timer.add(60 * 1000, function() self:startWave() end)
+    Timer.add(50 * 1000, function() self:sayCP(nil, 'Wave ' .. self.wave .. ' starts in 10s!') end)
 end
 
-function StartWave()
-    DisableBuilding()
-    ForceBotEvo('level' .. WAVE)
+function TowerDefense:startWave()
+    self:disableBuilding()
+    self:forceBotEvo('level' .. self.wave)
     local cmd = ''
-    for i=0,16 do
+    for _ = 0, 16 do
         cmd = cmd .. 'bot add * a 5 towerdefense\n'
     end
     Cmd.exec(cmd)
     sgame.level.aliens.momentum = 300
 end
 
-function init()
-    sgame.hooks.RegisterClientConnectHook(WelcomeClient)
-    sgame.hooks.RegisterPlayerSpawnHook(PlayerSpawn)
-    sgame.hooks.RegisterTeamChangeHook(StartGame)
-    SetupAlienBase()
-    LockTeam('a')
+function TowerDefense:start()
+    sgame.hooks.RegisterClientConnectHook(function(...) self:welcomeClient(...) end)
+    sgame.hooks.RegisterPlayerSpawnHook(function(...) self:playerSpawn(...) end)
+    sgame.hooks.RegisterTeamChangeHook(function(...) self:startGame(...) end)
+
+    self:setupAlienBase()
+    self:lockTeam('a')
     cvars.set('g_instantBuilding', '1')
     cvars.set('g_BPInitialBudgetHumans', '9999')
-    SetAvailableEquipment({jetpack=false, firebomb=false})
+    self:setAvailableEquipment({ jetpack = false, firebomb = false })
     cvars.set('g_disabledBuildables', 'reactor,telenode')
     cvars.set('g_evolveAroundHumans', '-1')
     print('Loaded lua...')
 end
 
-Timer.add(1, init)
+return TowerDefense
