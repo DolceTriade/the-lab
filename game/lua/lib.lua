@@ -53,4 +53,28 @@ function M.AllPlayers()
     end
 end
 
+function M.RegisterBotBalanceHook(botTeam, minimumBots)
+    local function balance()
+        local playerTeam = botTeam == 'human' and sgame.level.aliens or sgame.level.humans
+        local botCount = math.max(minimumBots, playerTeam.num_players)
+        Cmd.exec(('bot fill %d %s'):format(botCount, botTeam))
+    end
+
+    local function queue(ent)
+        if ent and ent.bot then
+            return
+        end
+        if queued then
+            return
+        end
+        Timer.add(1, function()
+            balance()
+        end)
+    end
+
+    sgame.hooks.RegisterClientConnectHook(queue)
+    sgame.hooks.RegisterTeamChangeHook(queue)
+    return balance
+end
+
 return M

@@ -1,5 +1,6 @@
 local chat = require('lua/chat.lua')
 local cvars = require('lua/cvars.lua')
+local difficulty = require('lua/difficulty.lua')
 local str = require('lua/str.lua')
 local math = require('math')
 local lib = require('lua/lib.lua')
@@ -14,7 +15,11 @@ local floor = math.floor
 local random = math.random
 
 local TEAM_BOT_COUNT = 3
-local PVE_BOT_COUNT = 9
+local BOT_COUNTS = {
+    [difficulty.EASY] = 6,
+    [difficulty.MEDIUM] = 9,
+    [difficulty.HARD] = 14,
+}
 local BOSS_INTERVAL_MS = 10 * 60 * 1000
 local BOSS_POOLS = {
     human = { 'flamer' },
@@ -94,6 +99,8 @@ function Raid:start()
     chat.GlobalCP('Starting ' .. str.ucfirst(self.team) .. ' raid mode!')
     local configs = BASELINE_CVARS[self.team]
     local inactiveTeam = self.pveTeam
+    local minimumBots = BOT_COUNTS[self.difficulty or difficulty.MEDIUM]
+    self.balanceBots = lib.RegisterBotBalanceHook(inactiveTeam, minimumBots)
 
     Cmd.exec(('lock %s;bot del all'):format(inactiveTeam))
     for i = 0, sgame.level.max_clients do
@@ -107,7 +114,8 @@ function Raid:start()
     for k, v in pairs(configs) do
         cvars.set(k, v)
     end
-    Cmd.exec(('bot fill %d %s'):format(PVE_BOT_COUNT, inactiveTeam))
+    Cmd.exec(('bot fill %d %s'):format(minimumBots, inactiveTeam))
+    self.balanceBots()
 
     wf.run(function() self:upgradesWorkflow() end)
     wf.run(function() self:bossesWorkflow() end)
