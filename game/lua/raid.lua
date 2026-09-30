@@ -25,6 +25,28 @@ local BOSS_POOLS = {
     human = { 'flamer' },
     alien = { 'granger' },
 }
+local BOSS_NAMES = {
+    flamer = {
+        '[BOSS] Flamer I',
+        '[BOSS] Flamer II',
+        '[BOSS] Flamer III',
+    },
+    granger = {
+        '[BOSS] Granger I',
+        '[BOSS] Granger II',
+        '[BOSS] Granger III',
+    },
+}
+local GRANGER_BOSS_CONFIGS = {
+    { damage_received_multiplier = 0.35 },
+    { damage_received_multiplier = 0.25 },
+    { damage_received_multiplier = 0.15 },
+}
+local GRANGER_DIFFICULTY_MULTIPLIERS = {
+    [difficulty.EASY] = 1.00,
+    [difficulty.MEDIUM] = 0.85,
+    [difficulty.HARD] = 0.70,
+}
 
 local BASELINE_CVARS = {
     human = {
@@ -87,11 +109,33 @@ function Raid:randomBoss()
     return pool[random(#pool)]
 end
 
+function Raid:grangerBossOptions(index)
+    local difficulty_multiplier = GRANGER_DIFFICULTY_MULTIPLIERS[
+        self.difficulty or difficulty.MEDIUM
+    ] or GRANGER_DIFFICULTY_MULTIPLIERS[difficulty.MEDIUM]
+
+    return {
+        damage_received_multiplier =
+            GRANGER_BOSS_CONFIGS[index].damage_received_multiplier * difficulty_multiplier,
+    }
+end
+
 function Raid:bossesWorkflow()
-    for _ = 1, 3 do
+    for index = 1, 3 do
         wf.wait_ms(BOSS_INTERVAL_MS)
         chat.GlobalCP(str.ucfirst(self.pveTeam) .. ' boss incoming!')
-        boss.add(self:randomBoss())
+        local boss_type = self:randomBoss()
+        local options = {
+            name = BOSS_NAMES[boss_type][index],
+            behavior = 'boss_' .. boss_type .. '.lua',
+            team = self.pveTeam == 'human' and 'humans' or 'aliens',
+        }
+        if boss_type == 'granger' then
+            for key, value in pairs(self:grangerBossOptions(index)) do
+                options[key] = value
+            end
+        end
+        boss.add(boss_type, options)
     end
 end
 
