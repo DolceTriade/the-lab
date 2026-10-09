@@ -47,6 +47,11 @@ local GRANGER_DIFFICULTY_MULTIPLIERS = {
     [difficulty.MEDIUM] = 0.85,
     [difficulty.HARD] = 0.70,
 }
+local FREE_MONEY_INTERVALS = {
+    [difficulty.EASY] = { start = 3 * 60 * 1000, target = 30 * 1000 },
+    [difficulty.MEDIUM] = { start = 60 * 1000, target = 10 * 1000 },
+    [difficulty.HARD] = { start = 30 * 1000, target = 5 * 1000 },
+}
 
 local BASELINE_CVARS = {
     human = {
@@ -73,9 +78,11 @@ end
 
 function Raid:waitFor()
     local match_time = sgame.level.match_time
-    local start_time = 3 * 60 * 1000
+    local interval = FREE_MONEY_INTERVALS[self.difficulty or difficulty.MEDIUM]
+        or FREE_MONEY_INTERVALS[difficulty.MEDIUM]
+    local start_time = interval.start
     local target_time = 30 * 60 * 1000
-    local target_wait = 30 * 1000
+    local target_wait = interval.target
     local min_wait = 1000
     local target_ratio = target_wait / start_time
     local progress = match_time / target_time
