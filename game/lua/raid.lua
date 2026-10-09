@@ -144,6 +144,7 @@ function Raid:start()
     local configs = BASELINE_CVARS[self.team]
     local inactiveTeam = self.pveTeam
     local minimumBots = BOT_COUNTS[self.difficulty or difficulty.MEDIUM]
+    local teamBotCount = self.difficulty == difficulty.EASY and 2 or TEAM_BOT_COUNT
     self.balanceBots = lib.RegisterBotBalanceHook(inactiveTeam, minimumBots)
 
     Cmd.exec(('lock %s;bot del all'):format(inactiveTeam))
@@ -154,7 +155,7 @@ function Raid:start()
         end
     end
 
-    Cmd.exec(('bot fill %d %s'):format(TEAM_BOT_COUNT, self.team))
+    Cmd.exec(('bot fill %d %s'):format(teamBotCount, self.team))
     for k, v in pairs(configs) do
         cvars.set(k, v)
     end

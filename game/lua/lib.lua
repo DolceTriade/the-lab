@@ -77,4 +77,10 @@ function M.RegisterBotBalanceHook(botTeam, minimumBots)
     return balance
 end
 
+function PrintTable(t)
+    for i, v in pairs(t) do
+        print(('[%s] => %s'):format(i, v))
+    end
+end
+
 return M
