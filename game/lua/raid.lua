@@ -1,10 +1,12 @@
 local chat = require('lua/chat.lua')
 local cvars = require('lua/cvars.lua')
 local difficulty = require('lua/difficulty.lua')
+local highscores = require('lua/highscores.lua')
 local str = require('lua/str.lua')
 local math = require('math')
 local lib = require('lua/lib.lua')
 local boss = require('bots/boss.lua')
+local bestTime = highscores.BestTime.new()
 
 local Raid = {}
 Raid.__index = Raid
@@ -171,6 +173,14 @@ function Raid:start()
 
     wf.run(function() self:upgradesWorkflow() end)
     wf.run(function() self:bossesWorkflow() end)
+    sgame.hooks.RegisterGameEndNotificationHook(function(team)
+        if team == self.team or team == self.team .. 's' then
+            local elapsed = sgame.level.match_time
+            local report = highscores.Record(team, elapsed, bestTime)
+            local message = highscores.FormatReport(report)
+            if message then chat.GlobalSay(message) end
+        end
+    end)
 end
 
 return Raid

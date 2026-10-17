@@ -3,6 +3,7 @@
 local chat = require('lua/chat.lua')
 local cvars = require('lua/cvars.lua')
 local difficulty = require('lua/difficulty.lua')
+local highscores = require('lua/highscores.lua')
 local mode = require('lua/mode.lua')
 
 local function startMode(path, team)
@@ -251,6 +252,22 @@ sgame.RegisterClientCommand('botequip', function(ent, args)
     end
     Cmd.exec(cmd)
     chat.Say(ent, txt)
+end)
+
+sgame.RegisterClientCommand('highscore', function(ent, args)
+    if #args > 1 then
+        chat.Say(ent, 'Usage: /highscore [map]')
+        return
+    end
+    local map = args[1] or Cvar.get('mapname')
+    local lines = highscores.FormatMap(map)
+    if not lines then
+        chat.Say(ent, 'Invalid map name.')
+        return
+    end
+    for _, line in ipairs(lines) do
+        chat.Say(ent, line)
+    end
 end)
 
 sgame.RegisterServerCommand('setg', 'Set a cvar for the duration of the game. After which it will be restored to the previous value.', function(args)

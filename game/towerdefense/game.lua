@@ -1,5 +1,6 @@
 local str = require('lua/str.lua')
 local cvars = require('lua/cvars.lua')
+local highscores = require('lua/highscores.lua')
 
 local TowerDefense = {}
 TowerDefense.__index = TowerDefense
@@ -206,6 +207,16 @@ function TowerDefense:start()
     sgame.hooks.RegisterClientConnectHook(function(...) self:welcomeClient(...) end)
     sgame.hooks.RegisterPlayerSpawnHook(function(...) self:playerSpawn(...) end)
     sgame.hooks.RegisterTeamChangeHook(function(...) self:startGame(...) end)
+    sgame.hooks.RegisterGameEndNotificationHook(function(team)
+        if team ~= 'human' and team ~= 'humans' then return end
+        local score = 0
+        for _, ent in pairs(sgame.entity) do
+            if ent and ent.client and not ent.bot and ent.team == 'human' then
+                score = score + ent.client.score
+            end
+        end
+        highscores.Record(team, score)
+    end)
 
     self:setupAlienBase()
     self:lockTeam('a')

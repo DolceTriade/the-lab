@@ -1,4 +1,5 @@
 local cvars = require('lua/cvars.lua')
+local highscores = require('lua/highscores.lua')
 
 local Juggernaut = {}
 Juggernaut.__index = Juggernaut
@@ -255,6 +256,10 @@ function Juggernaut:start()
     sgame.hooks.RegisterTeamChangeHook(function(...) self:onTeamChange(...) end)
     sgame.hooks.RegisterPlayerSpawnHook(function(...) self:onPlayerSpawn(...) end)
     sgame.hooks.RegisterGameEndHook(function(...) return self:gameEnd(...) end)
+    sgame.hooks.RegisterGameEndNotificationHook(function(team)
+        if team ~= 'alien' and team ~= 'aliens' then return end
+        highscores.Record(team, self.kills[self.juggernaut and self.juggernaut.number] or 0)
+    end)
 
     self:setupBuildables()
     cvars.set('g_bot_attackStruct', '0')
