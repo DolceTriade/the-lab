@@ -1,5 +1,5 @@
 local difficulty = require('lua/difficulty.lua')
-local json = require('lua/json.lua')
+local json = require('cjson')
 local lib = require('lua/lib.lua')
 local mode = require('lua/mode.lua')
 
