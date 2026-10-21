@@ -6,31 +6,50 @@ local difficulty = require('lua/difficulty.lua')
 local highscores = require('lua/highscores.lua')
 local mode = require('lua/mode.lua')
 
-local function startMode(path, team)
+require('lua/datarequests.lua')
+
+local function validLayout(layout, team)
+    if type(layout) ~= 'string' or not layout:match('^[%w_%-]+$') then return false end
+    if layout == 'builtin' then return true end
+    if team ~= 'human' and team ~= 'alien' then return false end
+    if layout:sub(1, #team + 1) ~= team .. '-' then return false end
+    local map = Cvar.get('mapname')
+    for _, file in ipairs(File.list('layouts/' .. map, '.dat')) do
+        if file == layout .. '.dat' then return true end
+    end
+    return false
+end
+
+local function startMode(path, team, args)
+    args = args or {}
+    if args[1] then
+        local selected = difficulty.ParseDifficulty(string.lower(args[1]))
+        if not selected then return end
+        difficulty.SetDifficulty(selected)
+    end
+    if args[2] then
+        if not validLayout(args[2], team) then return end
+        Cvar.set('g_layouts', args[2])
+    end
     mode.SetMode(path, team)
     Cmd.exec('map_restart')
 end
 
-local function modeVote(command, description, args)
-    if #args > 1 then
-        return false
-    end
-
+local function modeVote(command, description, team, args)
+    if #args > 2 then return false end
     local selected
     if args[1] then
         selected = difficulty.ParseDifficulty(string.lower(args[1]))
-        if not selected or not difficulty.SetDifficulty(selected) then
-            return false
-        end
+        if not selected then return false end
     else
         selected = difficulty.GuessDifficulty()
     end
-    if not selected then
-        return false
-    end
+    if not selected then return false end
     local selectedName = difficulty.DifficultyString(selected)
-    return true, command,
-        description .. ' (difficulty: ' .. selectedName .. ')'
+    local layout = args[2] or 'builtin'
+    if not validLayout(layout, team) then return false end
+    return true, command .. ' ' .. selectedName .. ' ' .. layout,
+        description .. ' (difficulty: ' .. selectedName .. ', layout: ' .. layout .. ')'
 end
 
 
@@ -107,35 +126,35 @@ sgame.RegisterVote('humanbp', { type = 'V_PUBLIC', target = 'T_OTHER' }, functio
 end)
 
 sgame.RegisterServerCommand('alienpve', 'Start a PVE game with players against human bots', function(args)
-    startMode('lua/pve.lua', 'alien')
+    startMode('lua/pve.lua', 'alien', args)
 end)
 
 sgame.RegisterVote('alienpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return modeVote('alienpve', 'Start Alien PVE mode (Aliens vs Human bots)!', args)
+    return modeVote('alienpve', 'Start Alien PVE mode (Aliens vs Human bots)!', 'alien', args)
 end)
 
 sgame.RegisterServerCommand('humanpve', 'Start a PVE game with players against alien bots', function(args)
-    startMode('lua/pve.lua', 'human')
+    startMode('lua/pve.lua', 'human', args)
 end)
 
 sgame.RegisterVote('humanpve', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return modeVote('humanpve', 'Start Human PVE mode (Humans vs Alien bots)!', args)
+    return modeVote('humanpve', 'Start Human PVE mode (Humans vs Alien bots)!', 'human', args)
 end)
 
 sgame.RegisterServerCommand('humanraid', 'Start a raid game with humans against an alien boss team', function(args)
-    startMode('lua/raid.lua', 'human')
+    startMode('lua/raid.lua', 'human', args)
 end)
 
 sgame.RegisterVote('humanraid', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return modeVote('humanraid', 'Start Human Raid mode (Humans vs Alien boss team)!', args)
+    return modeVote('humanraid', 'Start Human Raid mode (Humans vs Alien boss team)!', 'human', args)
 end)
 
 sgame.RegisterServerCommand('alienraid', 'Start a raid game with aliens against an Human boss team', function(args)
-    startMode('lua/raid.lua', 'alien')
+    startMode('lua/raid.lua', 'alien', args)
 end)
 
 sgame.RegisterVote('alienraid', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return modeVote('alienraid', 'Start Alien Raid mode (Aliens vs Human boss team)!', args)
+    return modeVote('alienraid', 'Start Alien Raid mode (Aliens vs Human boss team)!', 'alien', args)
 end)
 
 sgame.RegisterServerCommand('juggernaut', 'Start the Juggernaut game mode', function(args)
@@ -147,11 +166,11 @@ sgame.RegisterVote('juggernaut', { type = 'V_PUBLIC', target = 'T_NONE' }, funct
 end)
 
 sgame.RegisterServerCommand('towerdefense', 'Start the Tower Defense game mode', function(args)
-    startMode('towerdefense/game.lua')
+    startMode('towerdefense/game.lua', nil, args)
 end)
 
 sgame.RegisterVote('towerdefense', { type = 'V_PUBLIC', target = 'T_NONE' }, function(ent, team, args)
-    return true, 'towerdefense', 'Start the Tower Defense game mode!'
+    return modeVote('towerdefense', 'Start the Tower Defense game mode!', nil, args)
 end)
 
 local function pairsByKeys(t, f)

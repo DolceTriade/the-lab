@@ -149,11 +149,12 @@ function Raid:bossesWorkflow()
 end
 
 function Raid:start()
+    Cmd.exec('time 300')
     chat.GlobalCP('Starting ' .. str.ucfirst(self.team) .. ' raid mode!')
     local configs = BASELINE_CVARS[self.team]
     local inactiveTeam = self.pveTeam
     local minimumBots = BOT_COUNTS[self.difficulty or difficulty.MEDIUM]
-    local teamBotCount = self.difficulty == difficulty.EASY and 2 or TEAM_BOT_COUNT
+    cvars.set('lua_pve_max_builders', self.difficulty == difficulty.EASY and '2' or '3')
     self.balanceBots = lib.RegisterBotBalanceHook(inactiveTeam, minimumBots)
 
     Cmd.exec(('lock %s;bot del all'):format(inactiveTeam))
@@ -164,7 +165,7 @@ function Raid:start()
         end
     end
 
-    Cmd.exec(('bot fill %d %s'):format(teamBotCount, self.team))
+    Cmd.exec(('bot fill %d %s'):format(TEAM_BOT_COUNT, self.team))
     for k, v in pairs(configs) do
         cvars.set(k, v)
     end

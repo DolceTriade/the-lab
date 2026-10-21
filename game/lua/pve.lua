@@ -54,17 +54,18 @@ end
 function PVE:start()
     local config = CONFIGS[self.team]
     local minimumBots = BOT_COUNTS[self.difficulty or difficulty.MEDIUM]
-    local playerBotCount = self.difficulty == difficulty.EASY and 2 or PLAYER_BOT_COUNT
+    cvars.set('lua_pve_max_builders', self.difficulty == difficulty.EASY and '2' or '3')
     self.balanceBots = lib.RegisterBotBalanceHook(config.botTeam, minimumBots)
 
     self:movePlayers()
 
+    Cmd.exec('time 300')
     cvars.set(config.budgetCvar, '2000')
     cvars.set(config.behaviorCvar, 'pve')
     cvars.set('g_bot_buildCooldown', '4000')
 
     Cmd.exec(('lock %s;bot del all'):format(config.botTeam))
-    Cmd.exec(('bot fill %d %s'):format(playerBotCount, config.playerTeam))
+    Cmd.exec(('bot fill %d %s'):format(PLAYER_BOT_COUNT, config.playerTeam))
     Cmd.exec(('bot fill %d %s'):format(minimumBots, config.botTeam))
     Cmd.exec('lock ' .. config.botTeam)
     self.balanceBots()
