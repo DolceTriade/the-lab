@@ -38,18 +38,19 @@ end
 
 function M.AllPlayers()
     local idx = -1
-    local max = level.num_connected_clients
-    local count = 0
+    local maxClients = level.max_clients
+    local connectedClients = level.num_connected_clients
+    local found = 0
     return function ()
-        if count == max then
-            return nil
+        while found < connectedClients and idx < maxClients do
+            idx = idx + 1
+            local ent = entities[idx]
+            if ent ~= nil and ent.client ~= nil then
+                found = found + 1
+                return ent
+            end
         end
-        idx = idx + 1
-        local ent = entities[idx]
-        if ent ~= nil and ent.client ~= nil then
-            count = count + 1
-            return ent
-        end
+        return nil
     end
 end
 
