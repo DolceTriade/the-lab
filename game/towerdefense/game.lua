@@ -1,9 +1,11 @@
 local str = require('lua/str.lua')
 local cvars = require('lua/cvars.lua')
 local highscores = require('lua/highscores.lua')
+local chat = require('lua/chat.lua')
 
 local TowerDefense = {}
 TowerDefense.__index = TowerDefense
+local bestTime = highscores.BestTime.new()
 
 local MAX_WAVE = 5
 local TARGET_KILLS = 100
@@ -20,13 +22,20 @@ function TowerDefense.new(options)
 end
 
 function TowerDefense:say(ent, txt)
-    local num = ent and ent.number or -1
-    sgame.SendServerCommand(num, 'print ' .. '"^2Tower Defense^*: ' .. txt .. '"')
+    local message = '^2Tower Defense^*: ' .. txt
+    if ent then
+        chat.Say(ent, message)
+    else
+        chat.GlobalSay(message)
+    end
 end
 
 function TowerDefense:cp(ent, txt)
-    local num = ent and ent.number or -1
-    sgame.SendServerCommand(num, 'cp ' .. '"' .. txt .. '"')
+    if ent then
+        chat.CP(ent, txt)
+    else
+        chat.GlobalCP(txt)
+    end
 end
 
 function TowerDefense:sayCP(ent, txt)
@@ -162,7 +171,10 @@ function TowerDefense:playerSpawn(ent)
     end
     if ent.team == 'alien' then
         ent.client.evos = 20
-        ent.die = function(...) self:countDeaths(...) end
+        ent.die = function(...)
+            self:countDeaths(...)
+            return true
+        end
     end
 end
 
@@ -207,16 +219,11 @@ function TowerDefense:start()
     sgame.hooks.RegisterClientConnectHook(function(...) self:welcomeClient(...) end)
     sgame.hooks.RegisterPlayerSpawnHook(function(...) self:playerSpawn(...) end)
     sgame.hooks.RegisterTeamChangeHook(function(...) self:startGame(...) end)
-    self.publishScoreboard = highscores.RegisterScoreboard('Tower Defense', 'humans')
+    self.publishScoreboard = highscores.RegisterScoreboard('Tower Defense', 'humans', bestTime)
     sgame.hooks.RegisterGameEndNotificationHook(function(team)
         if team ~= 'human' and team ~= 'humans' then return end
-        local score = 0
-        for _, ent in pairs(sgame.entity) do
-            if ent and ent.client and not ent.bot and ent.team == 'human' then
-                score = score + ent.client.score
-            end
-        end
-        highscores.Record(team, score)
+        local elapsed = sgame.level.match_time
+        highscores.Record(team, elapsed, bestTime)
         self.publishScoreboard('all')
     end)
 
