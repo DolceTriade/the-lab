@@ -20,7 +20,6 @@ function cleanup__gc()
     for k, v in pairs(cvars.CLEANUP) do
         cmd = cmd .. 'set ' .. k .. ' "' .. v .. '"\n'
     end
-    print(cmd)
     Cmd.exec(cmd)
 end
 

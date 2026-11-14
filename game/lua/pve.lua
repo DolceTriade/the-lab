@@ -69,6 +69,8 @@ function PVE:start()
     Cmd.exec(('bot fill %d %s'):format(minimumBots, config.botTeam))
     Cmd.exec('lock ' .. config.botTeam)
     self.balanceBots()
+    local modeName = self.team == 'human' and 'Human PVE' or 'Alien PVE'
+    self.publishScoreboard = highscores.RegisterScoreboard(modeName, config.playerTeam, bestTime)
     chat.GlobalCP(config.message)
     sgame.hooks.RegisterGameEndNotificationHook(function(team)
         if team == config.playerTeam or team == config.playerTeam .. 's' then
@@ -76,6 +78,7 @@ function PVE:start()
             local report = highscores.Record(team, elapsed, bestTime)
             local message = highscores.FormatReport(report)
             if message then chat.GlobalSay(message) end
+            self.publishScoreboard('all')
         end
     end)
 end

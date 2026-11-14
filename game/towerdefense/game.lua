@@ -207,6 +207,7 @@ function TowerDefense:start()
     sgame.hooks.RegisterClientConnectHook(function(...) self:welcomeClient(...) end)
     sgame.hooks.RegisterPlayerSpawnHook(function(...) self:playerSpawn(...) end)
     sgame.hooks.RegisterTeamChangeHook(function(...) self:startGame(...) end)
+    self.publishScoreboard = highscores.RegisterScoreboard('Tower Defense', 'humans')
     sgame.hooks.RegisterGameEndNotificationHook(function(team)
         if team ~= 'human' and team ~= 'humans' then return end
         local score = 0
@@ -216,6 +217,7 @@ function TowerDefense:start()
             end
         end
         highscores.Record(team, score)
+        self.publishScoreboard('all')
     end)
 
     self:setupAlienBase()

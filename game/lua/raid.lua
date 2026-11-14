@@ -171,6 +171,8 @@ function Raid:start()
     end
     Cmd.exec(('bot fill %d %s'):format(minimumBots, inactiveTeam))
     self.balanceBots()
+    local modeName = self.team == 'human' and 'Human Raid' or 'Alien Raid'
+    self.publishScoreboard = highscores.RegisterScoreboard(modeName, self.team, bestTime)
 
     wf.run(function() self:upgradesWorkflow() end)
     wf.run(function() self:bossesWorkflow() end)
@@ -180,6 +182,7 @@ function Raid:start()
             local report = highscores.Record(team, elapsed, bestTime)
             local message = highscores.FormatReport(report)
             if message then chat.GlobalSay(message) end
+            self.publishScoreboard('all')
         end
     end)
 end

@@ -260,6 +260,94 @@ function M.CapturePlayers(team)
     return players
 end
 
+local function scoreboardText(value, limit)
+    return tostring(value or ''):gsub('[^%w #.,:/()!+%^%-|=]', ''):sub(1, limit or 96)
+end
+
+function M.CurrentHighscore(team, policy)
+    local normalized = teamName(team)
+    if not normalized then return nil end
+    local map = Cvar.get('mapname')
+    local gamemode = mode.Mode()
+    if not map or map == '' or not gamemode or gamemode == '' then return nil end
+    local layout = Cvar.get('layout')
+    layout = layout ~= '' and layout or 'builtin'
+    local selectedDifficulty = currentDifficulty()
+    if not selectedDifficulty then return nil end
+    local data = load(map)
+    local results = data[gamemode]
+        and data[gamemode][selectedDifficulty]
+        and data[gamemode][selectedDifficulty][normalized]
+        and data[gamemode][selectedDifficulty][normalized][layout]
+    local entry = type(results) == 'table' and results[1] or nil
+    if type(entry) ~= 'table' or not tonumber(entry.highscore) then return nil end
+
+    local score = entry.prettyHighscore
+    if type(score) ~= 'string' or score == '' then
+        policy = policy or BestPoints.new()
+        score = policy:FormatHighscore(tonumber(entry.highscore))
+    end
+    local date = 'date unknown'
+    if type(entry.achievedAt) == 'number' then
+        local ok, formatted = pcall(os.date, '!%Y-%m-%d', entry.achievedAt)
+        if ok and formatted then date = formatted end
+    end
+    local players = {}
+    for _, player in ipairs(type(entry.players) == 'table' and entry.players or {}) do
+        if type(player) == 'table' and type(player.name) == 'string' and player.name ~= '' then
+            local name = scoreboardText(player.name, 48)
+            if name ~= '' then players[#players + 1] = name end
+        end
+    end
+    return scoreboardText(score, 96), date, scoreboardText(table.concat(players, ', '), 320)
+end
+
+function M.PushScoreboard(target, friendlyModeName, team, policy)
+    local modeName = scoreboardText(('%s (%s)'):format(
+        friendlyModeName, currentDifficulty() or 'unknown'), 120)
+    local score, date, players = M.CurrentHighscore(team, policy)
+    local summary = score and ('#1: %s | %s'):format(score, date) or 'no highscore yet!'
+    local destination = target or 'all'
+    local source = [[
+cgame.RegisterPushHandler('scoreboard.modeInfo',function(d)
+ local c=rmlui.contexts['hudContext'];local doc=c and c.documents['scoreboard'];local t=doc and doc:GetElementById('modeInfo')
+ if not t then return end
+ local q=Rocket_QuakeToRML
+ local html=([=[<div class='modeinfo-row'><span class='modeinfo-label'>%s</span><span class='modeinfo-value'>%s</span></div><div class='modeinfo-row'><span class='modeinfo-label'>Players:</span><span class='modeinfo-value'>%s</span></div>]=]):format(q(d.mode),q(d.summary),q(d.players))
+ t.inner_rml=html;c:Update()
+end)
+]]
+    sgame.PushLua(destination, source)
+    return sgame.PushCommand(destination, 'scoreboard.modeInfo', {
+        mode = modeName,
+        summary = summary,
+        players = players or '',
+    })
+end
+
+function M.RegisterScoreboard(friendlyModeName, team, policy)
+    local function publish(target)
+        return M.PushScoreboard(target or 'all', friendlyModeName, team, policy)
+    end
+    publish('all')
+    sgame.hooks.RegisterClientConnectHook(function(ent, connected)
+        if connected and not ent.bot then
+            local clientNum = ent.number
+            local function publishWhenReady(attemptsLeft)
+                local client = sgame.entity[clientNum]
+                if not client or not client.client or client.bot then return end
+                if client.client.connected then
+                    publish(clientNum)
+                elseif attemptsLeft > 0 then
+                    Timer.add(500, function() publishWhenReady(attemptsLeft - 1) end)
+                end
+            end
+            Timer.add(500, function() publishWhenReady(10) end)
+        end
+    end)
+    return publish
+end
+
 function M.Record(team, score, policy)
     local normalized = teamName(team)
     score = tonumber(score)
