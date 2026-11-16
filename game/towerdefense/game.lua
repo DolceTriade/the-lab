@@ -209,7 +209,7 @@ function TowerDefense:startWave()
     self:forceBotEvo('level' .. self.wave)
     local cmd = ''
     for _ = 0, 16 do
-        cmd = cmd .. 'bot add * a 5 towerdefense\n'
+        cmd = cmd .. 'bot add * a 6 attack\n'
     end
     Cmd.exec(cmd)
     sgame.level.aliens.momentum = 300
