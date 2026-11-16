@@ -3,16 +3,25 @@ local cvars = require('lua/cvars.lua')
 local difficulty = require('lua/difficulty.lua')
 local highscores = require('lua/highscores.lua')
 local lib = require('lua/lib.lua')
+local math = require('math')
 local bestTime = highscores.BestTime.new()
 
 local PVE = {}
 PVE.__index = PVE
 
 local PLAYER_BOT_COUNT = 3
+local wf = sgame.workflow
+local max = math.max
+local floor = math.floor
 local BOT_COUNTS = {
     [difficulty.EASY] = 6,
     [difficulty.MEDIUM] = 9,
     [difficulty.HARD] = 14,
+}
+local FREE_MONEY_INTERVALS = {
+    [difficulty.EASY] = { start = 3 * 60 * 1000, target = 30 * 1000 },
+    [difficulty.MEDIUM] = { start = 60 * 1000, target = 10 * 1000 },
+    [difficulty.HARD] = { start = 30 * 1000, target = 5 * 1000 },
 }
 
 local CONFIGS = {
@@ -51,6 +60,41 @@ function PVE:movePlayers()
     end
 end
 
+function PVE:waitFor()
+    local match_time = sgame.level.match_time
+    local interval = FREE_MONEY_INTERVALS[self.difficulty or difficulty.MEDIUM]
+        or FREE_MONEY_INTERVALS[difficulty.MEDIUM]
+    local start_time = interval.start
+    local target_time = 30 * 60 * 1000
+    local target_wait = interval.target
+    local min_wait = 1000
+    local target_ratio = target_wait / start_time
+    local progress = match_time / target_time
+    local calculated_wait = start_time * (target_ratio ^ progress)
+    return floor(max(calculated_wait, min_wait))
+end
+
+function PVE:upgradesWorkflow()
+    local function giveMoneyH(ent, amount)
+        ent.client.credits = ent.client.credits + amount
+    end
+
+    local function giveMoneyA(ent, amount)
+        ent.client.evos = ent.client.evos + amount / 200
+    end
+
+    local botTeam = CONFIGS[self.team].botTeam
+    local giveMoney = botTeam == 'alien' and giveMoneyA or giveMoneyH
+    while true do
+        wf.wait_ms(self:waitFor())
+        for ent in lib.AllPlayers() do
+            if ent ~= nil and ent.client ~= nil and ent.team == botTeam then
+                giveMoney(ent, 600)
+            end
+        end
+    end
+end
+
 function PVE:start()
     local config = CONFIGS[self.team]
     local minimumBots = BOT_COUNTS[self.difficulty or difficulty.MEDIUM]
@@ -69,6 +113,7 @@ function PVE:start()
     Cmd.exec(('bot fill %d %s'):format(minimumBots, config.botTeam))
     Cmd.exec('lock ' .. config.botTeam)
     self.balanceBots()
+    wf.run(function() self:upgradesWorkflow() end)
     local modeName = self.team == 'human' and 'Human PVE' or 'Alien PVE'
     self.publishScoreboard = highscores.RegisterScoreboard(modeName, config.playerTeam, bestTime)
     chat.GlobalCP(config.message)
