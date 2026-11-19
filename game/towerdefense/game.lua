@@ -16,7 +16,6 @@ function TowerDefense.new(options)
         wave = 1,
         waveDeaths = 0,
         started = false,
-        cvarReset = {},
         difficulty = options.difficulty,
     }, TowerDefense)
 end
@@ -113,10 +112,8 @@ function TowerDefense:forceBotEvo(level)
         local enabled = level == class and '1' or '0'
         local cvar = 'g_bot_' .. class
         cvars.set(cvar, enabled)
-        self.cvarReset[cvar] = true
         if enabledForClass then
             cvars.set(cvar .. 'upg', enabled)
-            self.cvarReset[cvar .. 'upg'] = true
         end
     end
 end

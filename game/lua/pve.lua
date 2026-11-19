@@ -19,9 +19,9 @@ local BOT_COUNTS = {
     [difficulty.HARD] = 14,
 }
 local FREE_MONEY_INTERVALS = {
-    [difficulty.EASY] = { start = 3 * 60 * 1000, target = 30 * 1000 },
-    [difficulty.MEDIUM] = { start = 60 * 1000, target = 10 * 1000 },
-    [difficulty.HARD] = { start = 30 * 1000, target = 5 * 1000 },
+    [difficulty.EASY] = { start = 60 * 1000, target = 60 * 1000, money = 200 },
+    [difficulty.MEDIUM] = { start = 60 * 1000, target = 60 * 1000, money = 400 },
+    [difficulty.HARD] = { start = 60 * 1000, target = 60 * 1000, money = 600 },
 }
 
 local CONFIGS = {
@@ -85,11 +85,14 @@ function PVE:upgradesWorkflow()
 
     local botTeam = CONFIGS[self.team].botTeam
     local giveMoney = botTeam == 'alien' and giveMoneyA or giveMoneyH
+    local interval = FREE_MONEY_INTERVALS[self.difficulty or difficulty.MEDIUM]
+        or FREE_MONEY_INTERVALS[difficulty.MEDIUM]
+
     while true do
         wf.wait_ms(self:waitFor())
         for ent in lib.AllPlayers() do
             if ent ~= nil and ent.client ~= nil and ent.team == botTeam then
-                giveMoney(ent, 600)
+                giveMoney(ent, interval.money)
             end
         end
     end
@@ -104,7 +107,7 @@ function PVE:start()
     self:movePlayers()
 
     Cmd.exec('time 300')
-    cvars.set(config.budgetCvar, '2000')
+    cvars.set(config.budgetCvar, '1000')
     cvars.set(config.behaviorCvar, 'pve')
     cvars.set('g_bot_buildCooldown', '4000')
 
