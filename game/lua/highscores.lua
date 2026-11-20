@@ -33,7 +33,8 @@ end
 
 function HighscorePolicy:FormatAnnouncement(report)
     local names = playerNames(report.players)
-    local bots = tonumber(report.botCount) and (' (%d bot%s)'):format(report.botCount, report.botCount == 1 and '' or 's') or ''
+    local botCount = tonumber(report.botCount)
+    local bots = botCount and (' (%d bot%s)'):format(botCount, botCount == 1 and '' or 's') or ''
     local score = self:FormatHighscore(report.score)
     if report.initial then
         return self:FormatResult(names, score) .. bots .. ', setting the first record!'
@@ -327,7 +328,7 @@ end)
         mode = modeName,
         summary = summary,
         players = players or '',
-        bots = botCount ~= nil and tostring(botCount) or '',
+        bots = botCount ~= nil and ('%d'):format(botCount) or '',
     })
 end
 
