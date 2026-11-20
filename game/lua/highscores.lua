@@ -33,11 +33,12 @@ end
 
 function HighscorePolicy:FormatAnnouncement(report)
     local names = playerNames(report.players)
+    local bots = tonumber(report.botCount) and (' (%d bot%s)'):format(report.botCount, report.botCount == 1 and '' or 's') or ''
     local score = self:FormatHighscore(report.score)
     if report.initial then
-        return self:FormatResult(names, score) .. ', setting the first record!'
+        return self:FormatResult(names, score) .. bots .. ', setting the first record!'
     elseif report.entered then
-        local message = ('%s, ranking #%d'):format(self:FormatResult(names, score), report.rank)
+        local message = ('%s%s, ranking #%d'):format(self:FormatResult(names, score), bots, report.rank)
         if report.improvement then
             message = message .. (' (%s improvement)')
                 :format(self:FormatDelta(report.improvement))
@@ -47,7 +48,7 @@ function HighscorePolicy:FormatAnnouncement(report)
         end
         return message .. '!'
     end
-    return ('%s, %s behind #1.'):format(self:FormatResult(names, score),
+    return ('%s%s, %s behind #1.'):format(self:FormatResult(names, score), bots,
         self:FormatDelta(report.gapToFirst))
 end
 
@@ -224,10 +225,12 @@ function M.FormatMap(map)
                                                 or BestPoints.new():FormatHighscore(tonumber(entry.highscore))
                                             local achievedAt = formatDateTime(entry.achievedAt)
                                             local dateSuffix = achievedAt and ('  (' .. achievedAt .. ')') or ''
-                                            lines[#lines + 1] = ('  #%d  %s  %s%s')
+                                            local botCount = tonumber(entry.botCount)
+                                            local botSuffix = botCount and ('  %d bot%s'):format(botCount, botCount == 1 and '' or 's') or ''
+                                            lines[#lines + 1] = ('  #%d  %s  %s%s%s')
                                                 :format(rank, safeColorText(prettyHighscore),
                                                     playerNames(entry.players):gsub('[%z\1-\31"\\]', ''),
-                                                    dateSuffix)
+                                                    botSuffix, dateSuffix)
                                         end
                                     end
                                 end
@@ -252,12 +255,14 @@ function M.CapturePlayers(team)
     local normalized = teamName(team)
     if not normalized then return {} end
     local players = {}
+    local botCount = 0
     for ent in lib.AllPlayers() do
-        if ent and ent.client and not ent.bot and teamName(ent.team) == normalized then
-            players[#players + 1] = { name = ent.client.name, guid = ent.client.guid }
+        if ent and ent.client and teamName(ent.team) == normalized then
+            if ent.bot then botCount = botCount + 1
+            else players[#players + 1] = { name = ent.client.name, guid = ent.client.guid } end
         end
     end
-    return players
+    return players, botCount
 end
 
 local function scoreboardText(value, limit)
@@ -299,13 +304,13 @@ function M.CurrentHighscore(team, policy)
             if name ~= '' then players[#players + 1] = name end
         end
     end
-    return scoreboardText(score, 96), date, scoreboardText(table.concat(players, ', '), 320)
+    return scoreboardText(score, 96), date, scoreboardText(table.concat(players, ', '), 320), tonumber(entry.botCount)
 end
 
 function M.PushScoreboard(target, friendlyModeName, team, policy)
     local modeName = scoreboardText(('%s (%s)'):format(
         friendlyModeName, currentDifficulty() or 'unknown'), 120)
-    local score, date, players = M.CurrentHighscore(team, policy)
+    local score, date, players, botCount = M.CurrentHighscore(team, policy)
     local summary = score and ('#1: %s | %s'):format(score, date) or 'no highscore yet!'
     local destination = target or 'all'
     local source = [[
@@ -313,7 +318,7 @@ cgame.RegisterPushHandler('scoreboard.modeInfo',function(d)
  local c=rmlui.contexts['hudContext'];local doc=c and c.documents['scoreboard'];local t=doc and doc:GetElementById('modeInfo')
  if not t then return end
  local q=Rocket_QuakeToRML
- local html=([=[<div class='modeinfo-row'><span class='modeinfo-label'>%s</span><span class='modeinfo-value'>%s</span></div><div class='modeinfo-row'><span class='modeinfo-label'>Players:</span><span class='modeinfo-value'>%s</span></div>]=]):format(q(d.mode),q(d.summary),q(d.players))
+ local html=([=[<div class='modeinfo-row'><span class='modeinfo-label'>%s</span><span class='modeinfo-value'>%s</span></div><div class='modeinfo-row'><span class='modeinfo-label'>Players:</span><span class='modeinfo-value'>%s</span></div><div class='modeinfo-row'><span class='modeinfo-label'>Bots:</span><span class='modeinfo-value'>%s</span></div>]=]):format(q(d.mode),q(d.summary),q(d.players),q(d.bots))
  t.inner_rml=html;c:Update()
 end)
 ]]
@@ -322,6 +327,7 @@ end)
         mode = modeName,
         summary = summary,
         players = players or '',
+        bots = botCount ~= nil and tostring(botCount) or '',
     })
 end
 
@@ -383,7 +389,7 @@ function M.Record(team, score, policy)
             entry.highscore = tonumber(entry.highscore)
         end
     end
-    local players = M.CapturePlayers(normalized)
+    local players, botCount = M.CapturePlayers(normalized)
     local previousFirst = results[1] and results[1].highscore or nil
     local achievedAt = os.time()
     local result = {
@@ -391,6 +397,7 @@ function M.Record(team, score, policy)
         prettyHighscore = policy:FormatHighscore(score),
         achievedAt = achievedAt,
         players = players,
+        botCount = botCount,
     }
     local index = #results + 1
     while index > 1 and policy:Compare(score, results[index - 1].highscore) do index = index - 1 end
@@ -409,6 +416,7 @@ function M.Record(team, score, policy)
         prettyHighscore = policy:FormatHighscore(score),
         achievedAt = achievedAt,
         players = players,
+        botCount = botCount,
         policy = policy,
         rank = index,
         entered = entered,

@@ -8,6 +8,30 @@ local mode = require('lua/mode.lua')
 
 require('lua/datarequests.lua')
 
+local function disableModeBotVotes()
+    local disabled = Cvar.get('g_disabledVoteCalls') or ''
+    local modePath = mode.Mode()
+    local modeTeam = mode.Team()
+    local toDisable = {}
+    if modePath == 'lua/pve.lua' then
+        toDisable = { 'fillbots' }
+        toDisable[#toDisable + 1] = modeTeam == 'human' and 'fillbots_aliens' or 'fillbots_humans'
+    elseif modePath == 'towerdefense/game.lua' then
+        toDisable = { 'fillbots', 'fillbots_humans', 'fillbots_aliens' }
+    end
+    if #toDisable == 0 then return end
+
+    local disabledSet = {}
+    for vote in disabled:gmatch('[^,%s]+') do disabledSet[vote:lower()] = true end
+    for _, vote in ipairs(toDisable) do disabledSet[vote] = true end
+    local votes = {}
+    for vote in pairs(disabledSet) do votes[#votes + 1] = vote end
+    table.sort(votes)
+    cvars.set('g_disabledVoteCalls', table.concat(votes, ','))
+end
+
+disableModeBotVotes()
+
 local function validLayout(layout, team)
     if type(layout) ~= 'string' or not layout:match('^[%w_%-]+$') then return false end
     if layout == 'builtin' then return true end

@@ -127,6 +127,7 @@ sgame.RegisterDataEndpoint('highscores', function(client, params)
                                                 score = tostring(entry.prettyHighscore or entry.highscore):gsub('[%z\1-\31"\\]', ''):sub(1, 32),
                                                 date = type(entry.achievedAt) == 'number' and os.date('!%Y-%m-%d', entry.achievedAt) or '',
                                             }
+                                            if tonumber(entry.botCount) then record.botCount = tonumber(entry.botCount) end
                                             local count = 0
                                             for _, player in ipairs(entry.players or {}) do
                                                 if type(player) == 'table' and type(player.name) == 'string' then
