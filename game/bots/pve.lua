@@ -33,12 +33,14 @@ local STATE = behavior_state.new_behavior("pve", {
     build_reposition_until = {},
     human_equip_retry_at = {},
     equip_retry_at = {},
+    builder_overload_retry_at = {},
     spawn_evolve_attempt_time = {},
     tasks = {},
     boss_epoch = {},
 }, {
     "alien_target_lock", "alien_combat_until", "builder_assignment", "roles", "build_failures",
     "build_retry_after", "build_reposition_until", "human_equip_retry_at", "equip_retry_at",
+    "builder_overload_retry_at",
     "spawn_evolve_attempt_time", "tasks",
 })
 
@@ -1017,21 +1019,21 @@ local function maybe_equip(team, number, client, level, ctx)
 end
 
 local function should_equip(state)
-    if not is_human(state.team) or has_builder_assignment(state.number) then
+    if not is_human(state.team)
+        or has_builder_assignment(state.number)
+        or recently_attacked(state.level, state.mind, 2000) then
         return false
     end
 
-    local attacked_recently = recently_attacked(state.level, state.mind, 2000)
-    local no_ammo_and_safe = out_of_human_ammo(state.client, state.weapon_attr) and not attacked_recently
+    local no_ammo = out_of_human_ammo(state.client, state.weapon_attr)
     local just_spawned = state.mind.spawnTime
         and elapsed_since(state.level.time, state.mind.spawnTime) <= 5000
-    local enemy_nearby = state.enemy ~= nil or state.hostile_goal
     local armoury_distance = human_armoury_distance(state.mind)
     local armoury_nearby = armoury_distance ~= nil and armoury_distance < 500
-    local spawn_equip = just_spawned and (not enemy_nearby or armoury_nearby)
+    local spawn_equip = just_spawned
     local heal_equip = state.health_frac < 0.4 and armoury_nearby
 
-    return no_ammo_and_safe or spawn_equip or heal_equip
+    return no_ammo or spawn_equip or heal_equip
 end
 
 local function maybe_resupply_human(team, number, level, client, weapon_attr, mind, ctx)
@@ -1124,6 +1126,17 @@ local function run_builder_task(task, state, ctx)
         and not (is_human(state.team) and task.phase == "search")
         and not can_become_builder(state.team, state.client, state.team_level_data) then
         return STATUS_FAILURE
+    end
+
+    if is_human(state.team) and state.builder and (state.client.credits or 0) > 0 then
+        local retry_at = STATE.builder_overload_retry_at[state.number]
+        if not retry_at or retry_at <= state.level.time then
+            local status = common.buy_overload_upgrades(state.client, ctx)
+            if status ~= STATUS_FAILURE then
+                STATE.builder_overload_retry_at[state.number] = state.level.time + 5000
+                return status
+            end
+        end
     end
 
     if task.phase == "equip" then
@@ -1555,6 +1568,7 @@ return function(self, ctx)
         clear_alien_combat_latch(number)
         clear_task(number)
         clear_build_failure_state(number)
+        STATE.builder_overload_retry_at[number] = nil
         STATE.spawn_evolve_attempt_time[number] = nil
         return choose_spawn(team, number, team_snapshot, team_level_data, selected_buildable, ctx)
     end
